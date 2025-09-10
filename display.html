@@ -49,27 +49,16 @@
     .b-카페콜완료,.b-외출콜완료{background:#22c55e; border-color:transparent}
     .b-귀가,.b-수납후미귀가{background:#e5e7eb; color:#111; border-color:transparent}
 
-/* 기존 .memo 블록 교체 */
-.memo{
-  display:none;             /* 기본은 숨김 */
-  font-size:14px;           /* 필요시 18px로 */
-  line-height:1.25;
-  font-weight:800;
-  color:#111;               /* 검정 글씨 */
-  background:#fde68a;       /* 노란 배경 */
-  border:1px solid #f59e0b;
-  padding:5px 8px;
-  border-radius:10px;
-
-  /* 핵심: 텍스트 너비만큼만 박스 */
-  display:inline-block;     /* shrink-to-fit */
-  align-self:flex-start;    /* flex stretch 방지 */
-
-  /* 안전장치(줄바꿈/오버플로 방지) */
-  max-width:100%;
-  overflow-wrap: anywhere;  /* 긴 단어도 줄바꿈 */
-}
-.memo.show{ display:inline-block; } /* 보일 때도 inline-block 유지 */
+    /* ▼ 메모: 텍스트 길이만큼만 박스 */
+    .memo{
+      display:none;
+      font-size:14px; line-height:1.25; font-weight:800;
+      color:#111; background:#fde68a; border:1px solid #f59e0b;
+      padding:5px 8px; border-radius:10px;
+      display:inline-block; align-self:flex-start;
+      max-width:100%; overflow-wrap:anywhere;
+    }
+    .memo.show{ display:inline-block; }
 
     .meta{font-size:12px; color:var(--muted)}
 
@@ -121,9 +110,22 @@
       if(s<60)return`${s}초 전`;const m=Math.floor(s/60);if(m<60)return`${m}분 전`;
       const h=Math.floor(m/60);if(h<24)return`${h}시간 전`;const d=Math.floor(h/24);return`${d}일 전`};
 
-    // 30초마다 상대시간 텍스트 갱신
+    // 오전/오후 h:mm 포맷
+    function formatKTime(ts){
+      if(!ts) return "";
+      const d=new Date(ts);
+      let h=d.getHours(), m=d.getMinutes();
+      const ampm = h<12 ? "오전" : "오후";
+      h = h%12 || 12;
+      const mm = String(m).padStart(2,"0");
+      return `${ampm} ${h}:${mm}`;
+    }
+
+    // 30초마다 상대시간 + 로컬시각 갱신
     setInterval(()=>{document.querySelectorAll('[data-updated]').forEach(el=>{
-      const ts=Number(el.dataset.updated||0);el.textContent=ts?`업데이트: ${relTime(ts)}`:'';});},30_000);
+      const ts=Number(el.dataset.updated||0);
+      el.textContent = ts ? `업데이트: ${relTime(ts)} (${formatKTime(ts)})` : '';
+    });},30_000);
 
     const badgeClass=(s)=>({
       '상담대기중':'b-상담대기중',
@@ -137,7 +139,12 @@
     }[s]||'');
 
     let auth, provider, db;
-    let lastCall=new Set();
+
+    // ding 트리거 관리
+    let lastCall=new Set();           // callRequested 알림(기존)
+    const prevState=new Map();        // id -> 직전 location
+    const prevHasMemo=new Map();      // id -> 직전 memo 유무(boolean)
+    let inited=false;                 // 첫 스냅샷에는 소리 안 울림
 
     try{
       const { initializeApp }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
@@ -151,15 +158,11 @@
       auth=getAuth(app);
       await setPersistence(auth, browserLocalPersistence).catch(e=>showErr('Persistence 설정 실패: '+e.message));
       provider=new GoogleAuthProvider();
-
-      // 로그인 결과(redirect) 처리
       getRedirectResult(auth).catch(e=>showErr('리다이렉트 결과 오류: '+e.message));
 
-      // 로그인/로그아웃 버튼
       async function doLogin(){
-        try{
-          await signInWithPopup(auth, provider);
-        }catch(e){
+        try{ await signInWithPopup(auth, provider); }
+        catch(e){
           if(e?.code==='auth/operation-not-supported-in-this-environment' || String(e?.message||'').includes('popup')){
             showErr('팝업 로그인 불가 → 리다이렉트 로그인으로 진행합니다.');
             await signInWithRedirect(auth, provider);
@@ -172,19 +175,12 @@
       logoutBtn.onclick=async()=>{ try{ await signOut(auth); }catch(e){ showErr('로그아웃 실패: '+e.message);} };
 
       onAuthStateChanged(auth,(user)=>{
-        if(user){
-          whoami.textContent=user.email;
-          logoutBtn.style.display=''; loginBtn.style.display='none';
-        }else{
-          whoami.textContent='';
-          logoutBtn.style.display='none'; loginBtn.style.display='';
-        }
+        if(user){ whoami.textContent=user.email; logoutBtn.style.display=''; loginBtn.style.display='none'; }
+        else{ whoami.textContent=''; logoutBtn.style.display='none'; loginBtn.style.display=''; }
       });
 
-      // 연결 상태
       conn.textContent="연결됨";conn.className="pill ok";
 
-      // 실시간 구독
       onSnapshot(query(collection(db,"cases"),orderBy("createdAt","desc")),(snap)=>{
         hideErr();
         let docs=snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -198,14 +194,38 @@
         });
 
         const frag=document.createDocumentFragment();
-        docs.forEach(d=>{
-          // 새 콜요청 ding
-          if(d.callRequested&&!lastCall.has(d.id)){
-            try{ding.currentTime=0;ding.play().catch(()=>{});}catch(e){}
-            lastCall.add(d.id);
-          }
-          if(!d.callRequested) lastCall.delete(d.id);
 
+        docs.forEach(d=>{
+          // --- 소리 트리거 계산 (변경 감지) ---
+          let shouldDing=false;
+          const curState = d.location||"";
+          const curHasMemo = !!((d.memo||"").trim());
+
+          if(inited){
+            // 1) callRequested 새로 true → 기존 로직 유지
+            if(d.callRequested && !lastCall.has(d.id)) shouldDing=true;
+
+            // 2) 상태가 상담대기중으로 "변경"되었을 때
+            const prevS = prevState.get(d.id);
+            if(curState==="상담대기중" && prevS!=="상담대기중") shouldDing=true;
+
+            // 3) 메모가 "추가"되었을 때 (빈→내용)
+            const prevM = prevHasMemo.get(d.id);
+            if(curHasMemo && !prevM) shouldDing=true;
+          }
+
+          // callRequested 집합 관리(기존)
+          if(d.callRequested) lastCall.add(d.id); else lastCall.delete(d.id);
+
+          if(shouldDing){
+            try{ ding.currentTime=0; ding.play().catch(()=>{});}catch(e){}
+          }
+
+          // 상태 기록 갱신
+          prevState.set(d.id, curState);
+          prevHasMemo.set(d.id, curHasMemo);
+
+          // --- 카드 렌더 ---
           const card=document.createElement('div');card.className='card';
           if(d.callRequested) card.classList.add('call');
 
@@ -214,8 +234,8 @@
           name.textContent=(d.patientName||d.guardianName)
             ?(d.patientName&&d.guardianName?`${d.patientName}(${d.guardianName})`:(d.patientName||d.guardianName))
             :d.id;
-          const badge=document.createElement('span');badge.className='badge '+badgeClass(d.location||'');
-          badge.textContent=d.location||'상태없음';
+          const badge=document.createElement('span');badge.className='badge '+badgeClass(curState);
+          badge.textContent=curState||'상태없음';
           head.appendChild(name);head.appendChild(badge);
           card.appendChild(head);
 
@@ -228,7 +248,7 @@
 
           const meta=document.createElement('div');meta.className='meta';
           meta.dataset.updated=d.updatedAt||0;
-          meta.textContent=d.updatedAt?`업데이트: ${relTime(d.updatedAt)}`:'';
+          meta.textContent=d.updatedAt?`업데이트: ${relTime(d.updatedAt)} (${formatKTime(d.updatedAt)})`:'';
           card.appendChild(meta);
 
           const actions=document.createElement('div');actions.className='actions';
@@ -241,10 +261,12 @@
 
           frag.appendChild(card);
         });
+
         grid.innerHTML='';grid.appendChild(frag);
+        // 첫 스냅샷 처리 완료 후부터 변경 감지 활성화
+        if(!inited) inited=true;
       },(e)=>{conn.textContent='연결 오류';conn.className='pill err';showErr('리스트 구독 실패: '+e.message);});
 
-      // 로그인 확인 후 실행
       function requireLoginThen(fn){
         if(auth.currentUser){ fn(); return; }
         showErr('이 작업은 로그인 후 가능합니다. 로그인 창을 열게요.');
