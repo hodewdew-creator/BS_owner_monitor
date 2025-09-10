@@ -16,11 +16,15 @@
       position:fixed; inset:0 0 auto 0; z-index:10;
       display:flex; align-items:center; justify-content:space-between; gap:12px;
       padding:10px 14px; background:var(--card); border-bottom:1px solid var(--border); backdrop-filter:blur(var(--blur));
+      font-size:12px;
     }
     .brandwrap{display:flex; align-items:center; gap:10px; font-weight:900}
     .logo{width:22px;height:22px;border-radius:5px;object-fit:cover}
     .brand{letter-spacing:.2px}
     .right{display:flex;align-items:center;gap:8px}
+    .whoami{opacity:.8}
+    .tbtn{cursor:pointer;border:0;border-radius:8px;padding:6px 8px;background:#1f2937;color:#fff;border:1px solid #374151}
+    .tbtn.ok{background:var(--brand);border-color:transparent}
     .pill{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800;background:#1f2937;border:1px solid #374151}
     .pill.ok{background:#16a34a}.pill.err{background:#dc2626}.pill.warn{background:#f59e0b;color:#111}
 
@@ -45,8 +49,7 @@
     .b-카페콜완료,.b-외출콜완료{background:#22c55e; border-color:transparent}
     .b-귀가,.b-수납후미귀가{background:#e5e7eb; color:#111; border-color:transparent}
 
-    .memo{display:none; font-size:13px; line-height:1.35; color:#e5e7eb;
-      border-left:3px solid #334155; padding-left:8px;}
+    .memo{display:none; font-size:13px; line-height:1.35; color:#e5e7eb; border-left:3px solid #334155; padding-left:8px;}
     .memo.show{display:block}
     .meta{font-size:12px; color:var(--muted)}
 
@@ -55,7 +58,7 @@
       background:#1f2937; color:#fff; border:1px solid #374151;}
     .btn.ghost{background:transparent; color:#e5e7eb}
 
-    .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700}
+    .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700;white-space:pre-wrap}
     .errbox.show{display:block}
   </style>
 </head>
@@ -66,6 +69,9 @@
       <div class="brand">BS 보호자 모니터</div>
     </div>
     <div class="right">
+      <span id="whoami" class="whoami"></span>
+      <button id="loginBtn" class="tbtn ok">Google 로그인</button>
+      <button id="logoutBtn" class="tbtn" style="display:none">로그아웃</button>
       <span id="conn" class="pill warn">연결 확인 중…</span>
     </div>
   </div>
@@ -84,12 +90,18 @@
     const conn=document.getElementById('conn');
     const ding=document.getElementById('ding');
     const errBox=document.getElementById('err');
-    const showErr=(m)=>{errBox.textContent=m;errBox.classList.add('show')};
+    const whoami=document.getElementById('whoami');
+    const loginBtn=document.getElementById('loginBtn');
+    const logoutBtn=document.getElementById('logoutBtn');
+
+    const showErr=(m)=>{console.error(m);errBox.textContent=m;errBox.classList.add('show')};
     const hideErr=()=>errBox.classList.remove('show');
+
     const relTime=(ts)=>{if(!ts)return "";const s=Math.floor((Date.now()-ts)/1000);
       if(s<60)return`${s}초 전`;const m=Math.floor(s/60);if(m<60)return`${m}분 전`;
       const h=Math.floor(m/60);if(h<24)return`${h}시간 전`;const d=Math.floor(h/24);return`${d}일 전`};
 
+    // 30초마다 상대시간 텍스트 갱신
     setInterval(()=>{document.querySelectorAll('[data-updated]').forEach(el=>{
       const ts=Number(el.dataset.updated||0);el.textContent=ts?`업데이트: ${relTime(ts)}`:'';});},30_000);
 
@@ -104,33 +116,70 @@
       '수납후미귀가':'b-수납후미귀가'
     }[s]||'');
 
+    let auth, provider, db;
+    let lastCall=new Set();
+
     try{
       const { initializeApp }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
       const { getFirestore, collection, onSnapshot, query, orderBy, runTransaction, doc }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      const { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
 
       const firebaseConfig={apiKey:"AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4",authDomain:"bs-owner-monitor.firebaseapp.com",projectId:"bs-owner-monitor"};
-      const app=initializeApp(firebaseConfig);const db=getFirestore(app);
+      const app=initializeApp(firebaseConfig);
+      db=getFirestore(app);
+
+      auth=getAuth(app);
+      await setPersistence(auth, browserLocalPersistence).catch(e=>showErr('Persistence 설정 실패: '+e.message));
+      provider=new GoogleAuthProvider();
+
+      // 로그인 결과(redirect) 처리
+      getRedirectResult(auth).catch(e=>showErr('리다이렉트 결과 오류: '+e.message));
+
+      // 로그인/로그아웃 버튼
+      async function doLogin(){
+        try{
+          await signInWithPopup(auth, provider);
+        }catch(e){
+          if(e?.code==='auth/operation-not-supported-in-this-environment' || String(e?.message||'').includes('popup')){
+            showErr('팝업 로그인 불가 → 리다이렉트 로그인으로 진행합니다.');
+            await signInWithRedirect(auth, provider);
+            return;
+          }
+          showErr('로그인 실패: '+(e.code||'')+' '+e.message);
+        }
+      }
+      loginBtn.onclick=doLogin;
+      logoutBtn.onclick=async()=>{ try{ await signOut(auth); }catch(e){ showErr('로그아웃 실패: '+e.message);} };
+
+      onAuthStateChanged(auth,(user)=>{
+        if(user){
+          whoami.textContent=user.email;
+          logoutBtn.style.display=''; loginBtn.style.display='none';
+        }else{
+          whoami.textContent='';
+          logoutBtn.style.display='none'; loginBtn.style.display='';
+        }
+      });
+
+      // 연결 상태
       conn.textContent="연결됨";conn.className="pill ok";
 
-      let lastCall=new Set();
+      // 실시간 구독
       onSnapshot(query(collection(db,"cases"),orderBy("createdAt","desc")),(snap)=>{
         hideErr();
         let docs=snap.docs.map(d=>({id:d.id,...d.data()}));
 
-        // 정렬: 상담대기중 제일 위, 귀가/수납후미귀가 제일 아래, 나머지는 createdAt desc
+        // 정렬: 상담대기중 ↑, 귀가/수납후미귀가 ↓, 나머지는 createdAt desc
         docs.sort((a,b)=>{
-          const order=(d)=>{
-            if(d.location==="상담대기중") return 0;
-            if(d.location==="귀가"||d.location==="수납후미귀가") return 2;
-            return 1;
-          };
-          const oa=order(a),ob=order(b);
+          const order=(d)=> d.location==="상담대기중"?0 : (d.location==="귀가"||d.location==="수납후미귀가")?2 : 1;
+          const oa=order(a), ob=order(b);
           if(oa!==ob) return oa-ob;
           return (b.createdAt||0)-(a.createdAt||0);
         });
 
         const frag=document.createDocumentFragment();
         docs.forEach(d=>{
+          // 새 콜요청 ding
           if(d.callRequested&&!lastCall.has(d.id)){
             try{ding.currentTime=0;ding.play().catch(()=>{});}catch(e){}
             lastCall.add(d.id);
@@ -165,8 +214,8 @@
           const actions=document.createElement('div');actions.className='actions';
           const callBtn=document.createElement('button');callBtn.className='btn';callBtn.textContent='📣 콜요청하기';
           const cancelBtn=document.createElement('button');cancelBtn.className='btn ghost';cancelBtn.textContent='콜요청취소';
-          callBtn.onclick=()=>updateCase(d.id,{callRequested:true,callRequestedAt:Date.now()});
-          cancelBtn.onclick=()=>updateCase(d.id,{callRequested:false});
+          callBtn.onclick=()=> requireLoginThen(()=>updateCase(d.id,{callRequested:true,callRequestedAt:Date.now()}));
+          cancelBtn.onclick=()=> requireLoginThen(()=>updateCase(d.id,{callRequested:false}));
           actions.appendChild(callBtn);actions.appendChild(cancelBtn);
           card.appendChild(actions);
 
@@ -174,6 +223,13 @@
         });
         grid.innerHTML='';grid.appendChild(frag);
       },(e)=>{conn.textContent='연결 오류';conn.className='pill err';showErr('리스트 구독 실패: '+e.message);});
+
+      // 로그인 확인 후 실행
+      function requireLoginThen(fn){
+        if(auth.currentUser){ fn(); return; }
+        showErr('이 작업은 로그인 후 가능합니다. 로그인 창을 열게요.');
+        doLogin();
+      }
 
       async function updateCase(id,data){
         try{
@@ -183,10 +239,13 @@
             const prev=snap.exists()?snap.data():{version:0};
             tx.set(ref,{...data,updatedAt:Date.now(),version:(prev.version||0)+1},{merge:true});
           });
-        }catch(e){showErr("저장 실패: "+e.message);}
+        }catch(e){showErr("저장 실패: "+(e.code||'')+' '+e.message);}
       }
 
-    }catch(e){conn.textContent='초기화 오류';conn.className='pill err';showErr('Firebase 초기화 실패: '+(e.message||e));}
+    }catch(e){
+      conn.textContent='초기화 오류';conn.className='pill err';
+      showErr('Firebase 초기화 실패: '+(e.message||e));
+    }
   </script>
 </body>
 </html>
