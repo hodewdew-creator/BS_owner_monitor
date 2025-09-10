@@ -18,14 +18,23 @@
     .clear{background:#334155;color:#fff;font-size:4vw}
     .blink{animation:blink 0.9s ease-in-out 3}
     @keyframes blink{50%{transform:scale(1.03)}}
-    
+
+    /* 상태 버튼 색상 규칙 */
+    .status-상담대기중{background:#dc2626;color:#fff}
+    .status-원내대기중{background:#f97316;color:#000}
+    .status-카페대기중{background:#f97316;color:#000}
+    .status-외출중{background:#38bdf8;color:#000}
+    .status-카페콜완료{background:#166534;color:#fff}
+    .status-외출콜완료{background:#166534;color:#fff}
+    .status-귀가{background:#9ca3af;color:#000}
+    .status-수납후미귀가{background:#9ca3af;color:#000}
+
     .statusbar{position:fixed;bottom:8px;left:8px;right:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     .pill{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;background:#1f2937;color:#fff}
     .pill.ok{background:#16a34a}.pill.err{background:#dc2626}.pill.warn{background:#f59e0b}
     .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700}
     .errbox.show{display:block}
 
-      .statusbtn{background:#166534;color:#fff} /* 톤다운 초록 + 흰글씨 */
   </style>
 </head>
 <body>
@@ -43,8 +52,6 @@
     <div class="row">
       <button id="callBtn" class="call">📣 콜 요청</button>
       <button id="clearBtn" class="clear">요청 표시 지우기</button>
-      <button id="cafeDoneBtn" class="statusbtn">카페콜완료</button>
-      <button id="awayDoneBtn" class="statusbtn">외출콜완료</button>
     </div>
   </div>
 
@@ -79,8 +86,6 @@
       const ding    = document.getElementById('ding');
       const callBtn = document.getElementById('callBtn');
       const clearBtn= document.getElementById('clearBtn');
-      const cafeDoneBtn = document.getElementById('cafeDoneBtn');
-      const awayDoneBtn = document.getElementById('awayDoneBtn');
       const caseSel = document.getElementById('caseSelect');
       const conn    = document.getElementById('conn');
       const selftest= document.getElementById('selftest');
@@ -157,9 +162,6 @@
 
       callBtn.onclick = ()=> updateCase({ callRequested:true, callRequestedAt: Date.now() });
       clearBtn.onclick= ()=> updateCase({ callRequested:false });
-      // 보호자 상태: 카페콜완료 / 외출콜완료
-      cafeDoneBtn.onclick = ()=> updateCase({ location: '카페콜완료', updatedAt: Date.now() });
-      awayDoneBtn.onclick = ()=> updateCase({ location: '외출콜완료', updatedAt: Date.now() });
 
       selftest.onclick = async ()=>{
         try {
