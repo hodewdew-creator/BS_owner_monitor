@@ -49,8 +49,20 @@
     .b-카페콜완료,.b-외출콜완료{background:#22c55e; border-color:transparent}
     .b-귀가,.b-수납후미귀가{background:#e5e7eb; color:#111; border-color:transparent}
 
-    .memo{display:none; font-size:13px; line-height:1.35; color:#e5e7eb; border-left:3px solid #334155; padding-left:8px;}
+    /* ▼ 메모: 환자이름과 같은 크기(18px), 노란 배경 + 검정 글씨로 가독성 강화 */
+    .memo{
+      display:none;
+      font-size:18px;          /* 이름과 동일 */
+      line-height:1.25;
+      font-weight:800;         /* 또렷하게 */
+      color:#111;              /* 검정 글씨 */
+      background:#fde68a;      /* 노란 배경 (amber-300) */
+      border:1px solid #f59e0b;/* 살짝 진한 테두리 */
+      padding:10px 12px;
+      border-radius:10px;
+    }
     .memo.show{display:block}
+
     .meta{font-size:12px; color:var(--muted)}
 
     .actions{display:flex; gap:8px; flex-wrap:wrap}
