@@ -3,61 +3,58 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
-  <title>보호자 위치 (표시·MVP)</title>
+  <title>보호자 위치 (처치실·전체 카드)</title>
   <style>
-    html,body{margin:0;height:100%;background:#0b1220;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto}
-    .wrap{display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;padding:6vh 4vw;gap:2vh}
-    .who{font-size:6vw;font-weight:800;text-align:center;word-break:keep-all}
-    .where{font-size:12vw;font-weight:900;line-height:1.1;text-align:center;word-break:keep-all;padding:1vh 2vw}
-    .meta{opacity:.85;margin-top:0.5rem;font-size:4vw}
-    .topbar{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#0b1220b3;backdrop-filter:blur(8px)}
-    .sel{font-size:16px;border-radius:8px;padding:6px 10px}
-    .row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:2vh}
-    button{cursor:pointer;border:0;border-radius:14px;padding:14px 18px;font-weight:900}
-    .call{background:#f97316;color:#fff;font-size:6vw}
-    .clear{background:#334155;color:#fff;font-size:4vw}
-    .blink{animation:blink 0.9s ease-in-out 3}
-    @keyframes blink{50%{transform:scale(1.03)}}
+    :root{
+      --bg:#0b1220; --fg:#ffffff; --muted:#9ca3af; --card:#111827cc; --blur:8px;
+      --border:#1f2937;
+    }
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto}
+    .topbar{position:fixed;inset:0 0 auto 0;display:flex;gap:10px;align-items:center;justify-content:space-between;
+      padding:10px 12px;background:var(--card);backdrop-filter:blur(var(--blur));z-index:10;border-bottom:1px solid var(--border)}
+    .brand{font-weight:900}
+    .pill{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;background:#1f2937;color:#fff;border:1px solid #374151}
+    .pill.ok{background:#16a34a} .pill.err{background:#dc2626} .pill.warn{background:#f59e0b;color:#111}
 
-    /* 상태 버튼 색상 규칙 */
-    .status-상담대기중{background:#dc2626;color:#fff}
-    .status-원내대기중{background:#f97316;color:#000}
-    .status-카페대기중{background:#f97316;color:#000}
-    .status-외출중{background:#38bdf8;color:#000}
-    .status-카페콜완료{background:#166534;color:#fff}
-    .status-외출콜완료{background:#166534;color:#fff}
-    .status-귀가{background:#9ca3af;color:#000}
-    .status-수납후미귀가{background:#9ca3af;color:#000}
+    .wrap{min-height:100%;padding:64px 16px 20px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+    .pcard{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px}
+    .pcard.calling{outline:4px solid rgba(220,38,38,.6);outline-offset:-4px;animation:frame 1.2s linear infinite}
+    @keyframes frame{0%,100%{outline-color:rgba(220,38,38,.2)}50%{outline-color:rgba(220,38,38,.7)}}
+    .head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .name{font-weight:900;font-size:18px;word-break:keep-all}
+    .badge{border-radius:999px;padding:6px 10px;font-weight:900}
+    .loc{font-size:28px;font-weight:900;line-height:1.1;margin-top:2px;word-break:keep-all}
+    .meta{font-size:12px;opacity:.85}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .btn{cursor:pointer;border:0;border-radius:12px;padding:10px 14px;font-weight:800;background:#1f2937;color:#fff;border:1px solid #374151}
+    .btn.ghost{background:transparent}
 
-    .statusbar{position:fixed;bottom:8px;left:8px;right:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .pill{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;background:#1f2937;color:#fff}
-    .pill.ok{background:#16a34a}.pill.err{background:#dc2626}.pill.warn{background:#f59e0b}
+    /* 상태 버튼/배지 색상 */
+    .bg-상담대기중{background:#dc2626;color:#fff}
+    .bg-원내대기중{background:#f97316;color:#000}
+    .bg-카페대기중{background:#f97316;color:#000}
+    .bg-외출중{background:#38bdf8;color:#000}
+    .bg-카페콜완료{background:#166534;color:#fff}
+    .bg-외출콜완료{background:#166534;color:#fff}
+    .bg-귀가{background:#9ca3af;color:#000}
+    .bg-수납후미귀가{background:#9ca3af;color:#000}
+
     .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700}
     .errbox.show{display:block}
-
   </style>
 </head>
 <body>
   <div class="topbar">
-    <div style="font-weight:900">표시 화면</div>
-    <select id="caseSelect" class="sel" title="환자 선택"></select>
+    <div class="brand">처치실 화면 · 전체 카드</div>
+    <div>
+      <span id="conn" class="pill warn">연결 확인 중…</span>
+    </div>
   </div>
 
   <div class="wrap">
     <div id="err" class="errbox"></div>
-    <div class="who" id="who">환자 선택 대기…</div>
-    <div class="where" id="where"></div>
-    <div class="meta" id="meta"></div>
-
-    <div class="row">
-      <button id="callBtn" class="call">📣 콜 요청</button>
-      <button id="clearBtn" class="clear">요청 표시 지우기</button>
-    </div>
-  </div>
-
-  <div class="statusbar">
-    <span id="conn" class="pill warn">연결 확인 중…</span>
-    <button id="selftest" class="pill">연결 테스트</button>
+    <div id="grid" class="grid"></div>
   </div>
 
   <audio id="ding" preload="auto">
@@ -69,112 +66,111 @@
     function showErr(msg){errBox.textContent=msg; errBox.classList.add('show');}
     function hideErr(){errBox.classList.remove('show');}
 
-    window.addEventListener('error', e=> showErr('스크립트 에러: '+(e.message||'unknown')));
+    const grid = document.getElementById('grid');
+    const conn = document.getElementById('conn');
+    const ding = document.getElementById('ding');
 
-    let app, db;
-    try {
+    function relTime(ts){
+      if(!ts) return "";
+      const s = Math.floor((Date.now()-ts)/1000);
+      if (s < 60) return `${s}초 전`;
+      const m = Math.floor(s/60); if (m < 60) return `${m}분 전`;
+      const h = Math.floor(m/60); if (h < 24) return `${h}시간 전`;
+      const d = Math.floor(h/24); return `${d}일 전`;
+    }
+
+    function stateClass(loc){
+      const map = {
+        '상담대기중':'bg-상담대기중',
+        '원내대기중':'bg-원내대기중',
+        '카페대기중':'bg-카페대기중',
+        '외출중':'bg-외출중',
+        '카페콜완료':'bg-카페콜완료',
+        '외출콜완료':'bg-외출콜완료',
+        '귀가':'bg-귀가',
+        '수납후미귀가':'bg-수납후미귀가'
+      };
+      return map[loc]||'';
+    }
+
+    try{
       const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-      const { getFirestore, collection, doc, onSnapshot, query, orderBy, runTransaction, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      const { getFirestore, collection, onSnapshot, query, orderBy, runTransaction, doc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
 
       const firebaseConfig = { apiKey:"AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4", authDomain:"bs-owner-monitor.firebaseapp.com", projectId:"bs-owner-monitor" };
-      app = initializeApp(firebaseConfig);
-      db  = getFirestore(app);
+      const app = initializeApp(firebaseConfig);
+      const db  = getFirestore(app);
 
-      const whoEl   = document.getElementById('who');
-      const whereEl = document.getElementById('where');
-      const metaEl  = document.getElementById('meta');
-      const ding    = document.getElementById('ding');
-      const callBtn = document.getElementById('callBtn');
-      const clearBtn= document.getElementById('clearBtn');
-      const caseSel = document.getElementById('caseSelect');
-      const conn    = document.getElementById('conn');
-      const selftest= document.getElementById('selftest');
+      conn.textContent = "연결됨"; conn.className = "pill ok";
 
-      conn.textContent = "연결됨(초기)"; conn.className = "pill ok";
-
-      let unsubCase = null;
-      let currentCaseId = null;
-      let lastVersion = 0;
-
-      // 환자 목록
-      onSnapshot(query(collection(db,"cases"), orderBy("createdAt","desc")), (snap)=>{
+      let cache = [];
+      onSnapshot(query(collection(db,'cases'), orderBy('createdAt','desc')), (snap)=>{
         hideErr();
-        const selVal = caseSel.value;
-        caseSel.innerHTML = "";
-        snap.forEach(d=>{
-          const o = document.createElement('option');
-          const data = d.data();
-          const pn = data.patientName||""; const gn = data.guardianName||"";
-          o.value = d.id;
-          o.textContent = (pn&&gn) ? `${pn}(${gn})` : (pn||gn||d.id);
-          caseSel.appendChild(o);
-        });
-        if (snap.size && (!selVal || ![...caseSel.options].some(o=>o.value===selVal))) {
-          caseSel.selectedIndex = 0;
-          selectCase(caseSel.value);
-        } else if (selVal) {
-          caseSel.value = selVal;
-        }
-      }, (e)=>{ conn.textContent="연결 오류"; conn.className="pill err"; showErr("목록 구독 실패: "+e.message); });
+        cache = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+        render();
+      }, (e)=>{ conn.textContent='연결 오류'; conn.className='pill err'; showErr('목록 구독 실패: '+e.message); });
 
-      caseSel.onchange = ()=> selectCase(caseSel.value);
-
-      function selectCase(id){
-        if (unsubCase) { unsubCase(); unsubCase = null; }
-        currentCaseId = id;
-        lastVersion = 0;
-        if (!id) return;
-        unsubCase = onSnapshot(doc(db,"cases",id), (snap)=>{
-          hideErr();
-          if (!snap.exists()) return;
-          const d = snap.data();
-          const pn = d.patientName || "";
-          const gn = d.guardianName || "";
-          const displayName = (pn&&gn) ? `${pn}(${gn})` : (pn||gn||"이름 미입력");
-          whoEl.textContent = displayName;
-
-          whereEl.textContent = d.location || "알 수 없음";
-          const t = d.updatedAt ? new Date(d.updatedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : "";
-          const req = d.callRequested ? " · 콜요청중" : "";
-          metaEl.textContent = t ? `업데이트: ${t}${req}` : (d.callRequested ? "콜요청중" : "");
-
-          if (d.version && d.version !== lastVersion) {
-            lastVersion = d.version;
-            try { ding.currentTime = 0; ding.play().catch(()=>{}); } catch(e){}
-            whereEl.classList.remove('blink'); void whereEl.offsetWidth; whereEl.classList.add('blink');
-          }
-        }, (e)=>{ conn.textContent="연결 오류"; conn.className="pill err"; showErr("환자 구독 실패: "+e.message); });
+      function displayName(d){
+        return (d.patientName||d.guardianName)
+          ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName))
+          : d.id;
       }
 
-      async function updateCase(data){
-        if (!currentCaseId) return showErr("환자를 먼저 선택하세요.");
-        const ref = doc(db,"cases", currentCaseId);
-        try {
+      function displayLocation(d){
+        return d.location || '';
+      }
+
+      function cardEl(d){
+        const el = document.createElement('div'); el.className = 'pcard';
+        if (d.callRequested) el.classList.add('calling');
+
+        const header = document.createElement('div'); header.className='head';
+        const name = document.createElement('div'); name.className='name'; name.textContent = displayName(d);
+        const badge = document.createElement('span'); badge.className='badge '+stateClass(d.location||''); badge.textContent = displayLocation(d) || '상태없음';
+        header.appendChild(name); header.appendChild(badge);
+
+        const loc = document.createElement('div'); loc.className='loc'; loc.textContent = displayLocation(d);
+        const meta = document.createElement('div'); meta.className='meta'; meta.textContent = `업데이트: ${relTime(d.updatedAt||0)}${d.callRequested? ' · 콜요청중':''}`;
+
+        const actions = document.createElement('div'); actions.className='actions';
+        const callBtn = document.createElement('button'); callBtn.className='btn'; callBtn.textContent='📣 콜 요청';
+        const clearBtn= document.createElement('button'); clearBtn.className='btn ghost'; clearBtn.textContent='요청 지우기';
+        const cafeDone= document.createElement('button'); cafeDone.className='btn bg-카페콜완료'; cafeDone.textContent='카페콜완료';
+        const awayDone= document.createElement('button'); awayDone.className='btn bg-외출콜완료'; awayDone.textContent='외출콜완료';
+
+        callBtn.onclick = ()=> updateCase(d.id,{ callRequested:true, callRequestedAt: Date.now() });
+        clearBtn.onclick= ()=> updateCase(d.id,{ callRequested:false });
+        cafeDone.onclick = ()=> updateCase(d.id,{ location:'카페콜완료', updatedAt: Date.now(), callRequested:false });
+        awayDone.onclick = ()=> updateCase(d.id,{ location:'외출콜완료', updatedAt: Date.now(), callRequested:false });
+
+        actions.appendChild(callBtn); actions.appendChild(clearBtn); actions.appendChild(cafeDone); actions.appendChild(awayDone);
+
+        el.appendChild(header);
+        el.appendChild(loc);
+        el.appendChild(meta);
+        el.appendChild(actions);
+        return el;
+      }
+
+      function render(){
+        grid.innerHTML='';
+        cache.forEach(d=> grid.appendChild(cardEl(d)) );
+      }
+
+      async function updateCase(id, data){
+        try{
           await runTransaction(db, async (tx)=>{
+            const ref = doc(db,'cases', id);
             const snap = await tx.get(ref);
             const prev = snap.exists()? snap.data(): {version:0};
             tx.set(ref, { ...data, version:(prev.version||0)+1 }, { merge:true });
           });
-        } catch(e){
-          showErr("저장 실패: "+e.message);
-        }
+        }catch(e){ showErr('저장 실패: '+e.message); }
       }
 
-      callBtn.onclick = ()=> updateCase({ callRequested:true, callRequestedAt: Date.now() });
-      clearBtn.onclick= ()=> updateCase({ callRequested:false });
-
-      selftest.onclick = async ()=>{
-        try {
-          const ref = doc(db,"healthcheck","display");
-          await setDoc(ref, { ping: Date.now() }, { merge:true });
-          conn.textContent="연결 정상"; conn.className="pill ok";
-          hideErr();
-        } catch(e){ conn.textContent="연결 오류"; conn.className="pill err"; showErr("연결 테스트 실패: "+e.message); }
-      };
-
-    } catch(e) {
-      showErr("Firebase 초기화 실패: "+(e.message||e));
-      const conn = document.getElementById('conn'); conn.textContent="초기화 오류"; conn.className="pill err";
+    }catch(e){
+      showErr('Firebase 초기화 실패: '+(e.message||e));
+      if (conn){ conn.textContent='초기화 오류'; conn.className='pill err'; }
     }
   </script>
 </body>
