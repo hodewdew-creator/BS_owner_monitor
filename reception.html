@@ -8,18 +8,15 @@
     :root{
       --bg:#fafafa; --card:#ffffff; --border:#e5e7eb;
       --fg:#0f172a; --muted:#64748b;
-      --brand:#2b5fa3;                /* 로고 블루 */
-      --brand-ink:#102339;            /* 브랜드 대비 텍스트 */
-      --btn:#f1f5f9;                  /* 기본 버튼 배경 */
-      --btn-ink:#111827;              /* 기본 버튼 글자 */
-      --btn-hover:#e2e8f0;            /* 기본 버튼 호버 */
+      --brand:#2b5fa3; --brand-ink:#102339;
+      --btn:#f1f5f9; --btn-ink:#111827; --btn-hover:#e2e8f0;
       --pill:#1f2937;
     }
     html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto}
 
     /* 상단 우측: 로그인/로그아웃 */
     .topbar{
-      position:sticky; top:0; z-index:50;
+      position:sticky; top:0; z-index:60;
       display:flex; justify-content:flex-end; align-items:center;
       gap:6px; padding:6px 10px; background:rgba(250,250,250,.85); backdrop-filter:saturate(180%) blur(6px);
       border-bottom:1px solid var(--border);
@@ -35,20 +32,12 @@
     h1{margin:6px 0 12px; display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:.2px}
     .logo{width:28px;height:28px;border-radius:6px;object-fit:cover}
 
-    .card{
-      background:var(--card); border:1px solid var(--border);
-      border-radius:12px; padding:12px; margin-bottom:12px;
-    }
+    .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px;}
     label{display:block; font-size:12px; color:var(--muted); margin:0 0 4px 2px}
 
     /* 입력 줄: 스크롤 없이 한 줄 고정, 최소폭 축소 */
-    .inputs-wrap{
-      display:flex; gap:8px; align-items:flex-end; flex-wrap:nowrap;
-    }
-    .inputs-wrap input{
-      flex:1 1 80px; min-width:80px;      /* 요청: 각각 최소너비 반으로 (80px) */
-      padding:8px 10px; border:1px solid #cbd5e1; border-radius:10px; font-size:15px; background:#fff;
-    }
+    .inputs-wrap{display:flex; gap:8px; align-items:flex-end; flex-wrap:nowrap;}
+    .inputs-wrap input{flex:1 1 80px; min-width:80px; padding:8px 10px; border:1px solid #cbd5e1; border-radius:10px; font-size:15px; background:#fff;}
 
     /* 버튼 */
     .btn{cursor:pointer;border:1px solid #d1d5db;border-radius:10px;padding:12px 14px;font-weight:700;background:var(--btn);color:var(--btn-ink);white-space:nowrap;transition:.15s}
@@ -64,37 +53,52 @@
     .toolbar + .toolbar{margin-top:8px}
     .toolbar button{white-space:nowrap}
 
-    /* === 메모 영역 추가 === */
-    .memo-wrap{
-      display:flex; gap:8px; align-items:center; margin-top:16px;
-    }
-    .memo-wrap input{
-      flex:1 1 auto; min-width:120px;
-      padding:8px 10px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; font-size:14px;
-    }
+    /* 메모 */
+    .memo-wrap{display:flex; gap:8px; align-items:center; margin-top:16px}
+    .memo-wrap input{flex:1 1 auto; min-width:120px; padding:8px 10px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; font-size:14px;}
 
     /* 리스트 */
     .list{display:grid;grid-template-columns:1fr;gap:6px;margin-top:8px}
-    .line{display:grid;grid-template-columns:1.4fr .8fr .6fr;gap:8px;align-items:center;
-          background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 10px}
+    .line{display:grid;grid-template-columns:1.4fr .8fr .6fr;gap:8px;align-items:center;background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 10px}
     .name{font-weight:800;text-align:left}
     .state{font-weight:900;text-align:center}
     .updated{font-size:12px;opacity:.7;text-align:right}
-    .line.select{outline:3px solid var(--brand); outline-offset:0}        /* 선택 테두리 = 브랜드 블루 */
+    .line.select{outline:3px solid var(--brand); outline-offset:0}
     .line.calling{outline:3px solid rgba(220,38,38,.6); animation:callblink 1.1s linear infinite}
     @keyframes callblink{0%,100%{outline-color:rgba(220,38,38,.2)}50%{outline-color:rgba(220,38,38,.8)}}
 
     /* 하단 상태바 */
-    .statusbar{position:fixed;bottom:8px;left:8px;right:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .statusbar{position:fixed;bottom:8px;left:8px;right:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;z-index:55}
     .pill{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;background:var(--pill);color:#fff}
     .pill.ok{background:#16a34a}.pill.err{background:#dc2626}.pill.warn{background:#f59e0b}
 
-    .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700}
+    .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700;white-space:pre-wrap}
     .errbox.show{display:block}
 
+    /* 기존 작은 배너 알림 */
     .alert{display:none;margin:10px 0;padding:14px 16px;border-radius:12px;border:2px solid #ef4444;background:#fef2f2;color:#991b1b;font-weight:900}
     .alert.show{display:block;animation:pop .5s}
     @keyframes pop{from{transform:scale(.98)}to{transform:scale(1)}}
+
+    /* === 큰 팝업 오버레이 === */
+    .overlay{
+      position:fixed; inset:0; z-index:80; display:none; align-items:center; justify-content:center;
+      background:rgba(2,6,23,.65); backdrop-filter:blur(4px);
+    }
+    .overlay.show{display:flex}
+    .modal{
+      width:min(720px,92vw);
+      background:#ffffff; color:#0f172a; border-radius:16px; border:3px solid #ef4444;
+      box-shadow:0 20px 60px rgba(0,0,0,.35);
+      padding:22px 22px 18px; text-align:center;
+      animation:flash 0.9s ease-in-out 1;
+    }
+    @keyframes flash{0%{transform:scale(.98)}100%{transform:scale(1)}}
+    .modal h2{margin:0 0 6px; font-size:28px; font-weight:900}
+    .who{font-size:40px; font-weight:900; margin:6px 0 2px}
+    .hint{font-size:13px; color:#64748b; margin-bottom:14px}
+    .actions{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:8px}
+    .actions .btn{padding:12px 16px; font-size:15px}
   </style>
 </head>
 <body>
@@ -108,14 +112,27 @@
   <main>
     <h1>
       <img class="logo" src="image-512.png" alt="BS Logo" />
-      BS 대기실 모니터 (Reception)
+      BS Owner Monitor (Reception)
     </h1>
 
     <div id="err" class="errbox"></div>
 
-    <!-- 콜요청 알림 -->
+    <!-- 작은 배너 알림 -->
     <div id="alertBox" class="alert">📣 처치실에서 <span id="alertWho"></span> 콜 요청!
       <button id="ack" class="btn ok" style="margin-left:8px">처리완료</button>
+    </div>
+
+    <!-- === 큰 팝업 오버레이 === -->
+    <div id="bigOverlay" class="overlay" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true">
+        <h2>📣 콜 요청</h2>
+        <div id="bigWho" class="who"></div>
+        <div class="hint">“처리완료”를 누르면 상태가 자동으로 업데이트됩니다.</div>
+        <div class="actions">
+          <button id="bigAck" class="btn ok">처리완료</button>
+          <button id="bigClose" class="btn">닫기</button>
+        </div>
+      </div>
     </div>
 
     <div id="panel" style="display:none">
@@ -138,7 +155,7 @@
         <div class="toolbar" id="row1"></div>
         <div class="toolbar" id="row2"></div>
 
-        <!-- === 메모 입력(추가됨) === -->
+        <!-- 메모 -->
         <div class="memo-wrap">
           <input id="memoInput" type="text" placeholder="간단한 메모를 입력하세요…" />
           <button id="memoSaveBtn" class="btn">메모 저장</button>
@@ -163,6 +180,7 @@
       <button id="selftest" class="pill">연결 테스트</button>
     </div>
 
+    <!-- 효과음 -->
     <audio id="bell" preload="auto">
       <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
     </audio>
@@ -170,7 +188,7 @@
 
   <script type="module">
     const errBox = document.getElementById('err');
-    function showErr(msg){errBox.textContent=msg; errBox.classList.add('show');}
+    function showErr(msg){console.error(msg); errBox.textContent=msg; errBox.classList.add('show');}
     function hideErr(){errBox.classList.remove('show');}
     const relTime = (ts)=>{
       if(!ts) return "";
@@ -185,14 +203,10 @@
 
     try {
       const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-      const { getFirestore, collection, addDoc, onSnapshot, doc, runTransaction, query, orderBy, setDoc, deleteDoc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      const { getFirestore, collection, addDoc, onSnapshot, doc, runTransaction, query, orderBy, setDoc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
       const { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
 
-      const firebaseConfig = {
-        apiKey: "AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4",
-        authDomain: "bs-owner-monitor.firebaseapp.com",
-        projectId: "bs-owner-monitor"
-      };
+      const firebaseConfig = { apiKey:"AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4", authDomain:"bs-owner-monitor.firebaseapp.com", projectId:"bs-owner-monitor" };
       const app = initializeApp(firebaseConfig);
       const db  = getFirestore(app);
       const auth = getAuth(app);
@@ -238,7 +252,7 @@
             location:"원내대기중",
             createdAt: Date.now(), updatedAt: Date.now(),
             version:1, callRequested:false,
-            memo:"" /* 메모 필드 초기화 */
+            memo:""
           });
           patientName.value = ""; guardianName.value = ""; hideErr();
         } catch(e){ showErr("환자 추가 실패: "+e.message); }
@@ -247,25 +261,19 @@
       // 상태 버튼: 두 줄 고정
       const row1 = document.getElementById('row1');
       const row2 = document.getElementById('row2');
-
       const ROW1 = ["상담대기중","원내대기중","카페대기중","외출중"];
       const ROW2 = ["카페콜완료","외출콜완료","귀가","수납후미귀가"]; // + 삭제(별도)
-
       function makeBtn(text, onClick, cls="btn"){
         const b = document.createElement('button');
-        b.className = cls;
-        b.textContent = text;
-        b.onclick = onClick;
+        b.className = cls; b.textContent = text; b.onclick = onClick;
         return b;
       }
-
       ROW1.forEach(s=> row1.appendChild(makeBtn(s, ()=>applyGlobalState(s))));
       ROW2.forEach(s=> row2.appendChild(makeBtn(s, ()=>applyGlobalState(s))));
-      // 삭제 버튼(검은색)
       const delBtn = makeBtn("삭제", onDelete, "btn dark");
       row2.appendChild(delBtn);
 
-      // === 메모 저장 로직 추가 ===
+      // 메모 저장
       const memoInput = document.getElementById('memoInput');
       const memoSaveBtn = document.getElementById('memoSaveBtn');
       memoSaveBtn.onclick = async ()=>{
@@ -283,13 +291,13 @@
           : id;
       }
 
-      // 상태 텍스트 컬러 맵 (톤 다운)
+      // 상태 텍스트 컬러 매핑
       function colorForState(s){
-        if (s==="상담대기중") return "#dc2626";                   // red-600
-        if (s==="원내대기중" || s==="카페대기중") return "#d97706"; // amber-600
-        if (s==="외출중") return "#0284c7";                        // sky-600
-        if (s==="카페콜완료" || s==="외출콜완료") return "#16a34a"; // green-600
-        if (s==="귀가" || s==="수납후미귀가") return "#64748b";     // slate-500 (회색)
+        if (s==="상담대기중") return "#dc2626";
+        if (s==="원내대기중" || s==="카페대기중") return "#d97706";
+        if (s==="외출중") return "#0284c7";
+        if (s==="카페콜완료" || s==="외출콜완료") return "#16a34a";
+        if (s==="귀가" || s==="수납후미귀가") return "#64748b";
         return "";
       }
 
@@ -304,7 +312,7 @@
           selectedId = id;
           [...caseList.children].forEach(el=> el.classList.remove('select'));
           line.classList.add('select');
-          memoInput.value = d.memo || "";  // 선택 시 해당 환자 메모 로드
+          memoInput.value = d.memo || "";
         };
         if (d.callRequested) line.classList.add('calling');
         return line;
@@ -339,29 +347,60 @@
           await deleteDoc(doc(db,"cases", selectedId));
           selectedId = null;
           hideErr();
-          memoInput.value = ""; // 삭제 후 메모 비움
+          memoInput.value = "";
         }catch(e){ showErr("삭제 실패: "+e.message); }
       }
 
-      // 실시간 리스트 & 콜요청 알림 + 강조
-      const alertBox = document.getElementById('alertBox');
+      // === 큰 팝업 제어 + 사운드 ===
+      const alertBox = document.getElementById('alertBox');  // 작은 배너
       const alertWho = document.getElementById('alertWho');
-      const bell     = document.getElementById('bell');
       const ackBtn   = document.getElementById('ack');
 
+      const bigOverlay = document.getElementById('bigOverlay');
+      const bigWho     = document.getElementById('bigWho');
+      const bigAck     = document.getElementById('bigAck');
+      const bigClose   = document.getElementById('bigClose');
+      const bell       = document.getElementById('bell');
+
+      let lastAlertedId = null; // 같은 건 중복 알림 방지
+      let pendingReq = null;    // 현재 팝업에 표시 중인 요청 {id, d}
+
+      function resolveAckLocation(current){
+        if (current === "외출중") return "외출콜완료";
+        if (current === "카페대기중") return "카페콜완료";
+        // 그 외에도 기본은 카페콜완료로 처리
+        return "카페콜완료";
+      }
+
+      function showBigOverlay(name){
+        bigWho.textContent = name;
+        bigOverlay.classList.add('show');
+        bigOverlay.setAttribute('aria-hidden','false');
+      }
+      function hideBigOverlay(){
+        bigOverlay.classList.remove('show');
+        bigOverlay.setAttribute('aria-hidden','true');
+      }
+
+      bigClose.onclick = hideBigOverlay;
+
+      // 실시간 리스트 & 알림
       onSnapshot(query(collection(db,"cases"), orderBy("createdAt","desc")), (snap)=>{
         hideErr();
         caseList.innerHTML = "";
         let firstId = null;
         let anyReq = null;
-        let firstData = null;
+        let selectedDocData = null;
 
         snap.forEach(docu=>{
           const d = docu.data();
           const el = renderLine(docu.id, d);
           caseList.appendChild(el);
-          if (!firstId) { firstId = docu.id; firstData = d; }
-          if (d.callRequested) anyReq = { id: docu.id, d };
+          if (!firstId) firstId = docu.id;
+          if (docu.id === selectedId) selectedDocData = d;
+          if (d.callRequested) {
+            anyReq = { id: docu.id, d };
+          }
         });
 
         // 최초 자동 선택 + 메모 채우기
@@ -369,21 +408,50 @@
           selectedId = firstId;
           const firstEl = caseList.querySelector('[data-id="'+firstId+'"]');
           if (firstEl) firstEl.classList.add('select');
+          const firstData = snap.docs.find(x=>x.id===firstId)?.data();
           memoInput.value = (firstData && firstData.memo) ? firstData.memo : "";
         }
 
+        if (selectedId && selectedDocData) {
+          memoInput.value = selectedDocData.memo || "";
+        }
+
+        // 작은 배너
         if (anyReq) {
           const d = anyReq.d;
           alertWho.textContent = prettyName(d, anyReq.id);
           alertBox.classList.add('show');
-          try { bell.currentTime = 0; bell.play().catch(()=>{}); } catch(e){}
-          ackBtn.onclick = ()=> updateCase(anyReq.id, { callRequested:false, location:"카페콜완료" });
         } else {
           alertBox.classList.remove('show');
         }
 
+        // 큰 팝업 + 사운드 (새로운 요청일 때만)
+        if (anyReq && anyReq.id !== lastAlertedId) {
+          pendingReq = anyReq;
+          showBigOverlay(prettyName(anyReq.d, anyReq.id));
+          try { bell.currentTime = 0; bell.play().catch(()=>{}); } catch(e){}
+          lastAlertedId = anyReq.id;
+        }
+        if (!anyReq) {
+          pendingReq = null;
+          lastAlertedId = null; // 모두 해제되면 다음 요청 시 다시 울림
+          hideBigOverlay();
+        }
+
         conn.textContent="연결됨"; conn.className="pill ok";
       }, (e)=>{ conn.textContent="연결 오류"; conn.className="pill err"; showErr("리스트 구독 실패: "+e.message); });
+
+      // 처리완료(배너 / 팝업 공통 사용)
+      async function acknowledge(req){
+        if (!req) return;
+        const d = req.d;
+        const newState = resolveAckLocation(d.location||"");
+        await updateCase(req.id, { callRequested:false, location:newState });
+        hideBigOverlay();
+      }
+
+      ackBtn.onclick   = ()=> acknowledge(pendingReq);  // 작은 배너의 처리완료
+      bigAck.onclick   = ()=> acknowledge(pendingReq);  // 큰 팝업의 처리완료
 
       // 연결 테스트
       selftest.onclick = async ()=>{
@@ -395,9 +463,8 @@
 
     } catch(e) {
       showErr("Firebase 초기화 실패: "+(e.message||e));
-      const conn = document.getElementById('conn'); conn.textContent="초기화 오류"; conn.className="pill err";
+      const conn = document.getElementById('conn'); if (conn){ conn.textContent="초기화 오류"; conn.className="pill err"; }
     }
   </script>
 </body>
 </html>
-
