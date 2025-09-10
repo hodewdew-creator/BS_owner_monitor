@@ -3,76 +3,54 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
-  <title>보호자 위치 (처치실·전체카드 보기)</title>
+  <title>보호자 위치 (표시·MVP)</title>
   <style>
-    :root{
-      --bg:#0b1220; --fg:#ffffff; --muted:#9ca3af; --card:#111827cc; --blur:8px;
-      --blue:#2563eb; --yellow:#f59e0b; --green:#16a34a; --purple:#8b5cf6; --gray:#6b7280; --red:#dc2626; --red-dim:#b91c1c;
-      --border:#1f2937; --panel:#0f172a;
-    }
-    html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto}
-    .topbar{position:fixed;inset:0 0 auto 0;display:flex;gap:10px;align-items:center;justify-content:space-between;
-      padding:10px 12px;background:var(--card);backdrop-filter:blur(var(--blur));z-index:10;border-bottom:1px solid var(--border)}
-    .brand{font-weight:900}
-    .authbar{display:flex;gap:8px;align-items:center}
-    .pill{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;background:#1f2937;color:#fff;border:1px solid #374151}
-    .pill.ok{background:var(--green)} .pill.err{background:var(--red)} .pill.warn{background:var(--yellow);color:#111}
-    .btn{cursor:pointer;border:0;border-radius:12px;padding:10px 14px;font-weight:800;background:#1f2937;color:#fff;border:1px solid #374151}
-    .btn.ghost{background:transparent}
-    .btn.small{padding:6px 10px;font-weight:700}
-    .btn.disabled{opacity:.5;pointer-events:none}
+    html,body{margin:0;height:100%;background:#0b1220;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto}
+    .wrap{display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;padding:6vh 4vw;gap:2vh}
+    .who{font-size:6vw;font-weight:800;text-align:center;word-break:keep-all}
+    .where{font-size:12vw;font-weight:900;line-height:1.1;text-align:center;word-break:keep-all;padding:1vh 2vw}
+    .meta{opacity:.85;margin-top:0.5rem;font-size:4vw}
+    .topbar{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#0b1220b3;backdrop-filter:blur(8px)}
+    .sel{font-size:16px;border-radius:8px;padding:6px 10px}
+    .row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:2vh}
+    button{cursor:pointer;border:0;border-radius:14px;padding:14px 18px;font-weight:900}
+    .call{background:#f97316;color:#fff;font-size:6vw}
+    .clear{background:#334155;color:#fff;font-size:4vw}
+    .blink{animation:blink 0.9s ease-in-out 3}
+    @keyframes blink{50%{transform:scale(1.03)}}
+    
+    .statusbar{position:fixed;bottom:8px;left:8px;right:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .pill{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;background:#1f2937;color:#fff}
+    .pill.ok{background:#16a34a}.pill.err{background:#dc2626}.pill.warn{background:#f59e0b}
+    .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700}
+    .errbox.show{display:block}
 
-    .wrap{min-height:100%;padding:64px 16px 20px}
-    .toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin:12px 0}
-    .search{display:flex;gap:8px;align-items:center}
-    .field{padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--panel);color:#fff}
-
-    .grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));gap:14px}
-    .pcard{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px}
-    .pcard.calling{outline:4px solid rgba(220,38,38,.6);outline-offset:-4px;animation:frame 1.2s linear infinite}
-    @keyframes frame{0%,100%{outline-color:rgba(220,38,38,.2)}50%{outline-color:rgba(220,38,38,.7)}}
-    .head{display:flex;align-items:center;justify-content:space-between;gap:10px}
-    .name{font-weight:900;font-size:18px;word-break:keep-all}
-    .badge{border-radius:999px;padding:6px 10px;font-weight:900}
-    .loc{font-size:28px;font-weight:900;line-height:1.1;margin-top:2px;word-break:keep-all}
-    .meta{font-size:12px;opacity:.85}
-    .actions{display:flex;gap:8px;flex-wrap:wrap}
-    .tiny{font-size:11px;opacity:.8}
+      .statusbtn{background:#166534;color:#fff} /* 톤다운 초록 + 흰글씨 */
   </style>
 </head>
 <body>
   <div class="topbar">
-    <div class="brand">처치실 화면 · 전체 카드</div>
-    <div class="authbar">
-      <button id="fsBtn" class="pill">⛶ 풀스크린</button>
-      <button id="loginBtn" class="pill">Google 로그인</button>
-      <button id="logoutBtn" class="pill" style="display:none">로그아웃</button>
-      <span id="whoami" class="tiny"></span>
-      <span id="conn" class="pill warn">연결 확인 중…</span>
-    </div>
+    <div style="font-weight:900">표시 화면</div>
+    <select id="caseSelect" class="sel" title="환자 선택"></select>
   </div>
 
   <div class="wrap">
-    <div class="toolbar">
-      <div class="search">
-        <input id="q" class="field" placeholder="이름 검색 (고양이/보호자)" />
-        <select id="filter" class="field">
-          <option value="">전체 상태</option>
-          <option>원내대기중</option>
-          <option>상담대기중</option>
-          <option>카페대기중</option>
-          <option>카페콜완료</option>
-          <option>카페콜완료(오시는중)</option>
-          <option>외출</option>
-          <option>수납후미귀가</option>
-          <option>귀가</option>
-        </select>
-      </div>
-      <div class="tiny">* 버튼 작동은 로그인 후</div>
-    </div>
-
     <div id="err" class="errbox"></div>
-    <div id="grid" class="grid"></div>
+    <div class="who" id="who">환자 선택 대기…</div>
+    <div class="where" id="where"></div>
+    <div class="meta" id="meta"></div>
+
+    <div class="row">
+      <button id="callBtn" class="call">📣 콜 요청</button>
+      <button id="clearBtn" class="clear">요청 표시 지우기</button>
+      <button id="cafeDoneBtn" class="statusbtn">카페콜완료</button>
+      <button id="awayDoneBtn" class="statusbtn">외출콜완료</button>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <span id="conn" class="pill warn">연결 확인 중…</span>
+    <button id="selftest" class="pill">연결 테스트</button>
   </div>
 
   <audio id="ding" preload="auto">
@@ -81,183 +59,120 @@
 
   <script type="module">
     const errBox = document.getElementById('err');
-    const grid = document.getElementById('grid');
-    const q = document.getElementById('q');
-    const filter = document.getElementById('filter');
     function showErr(msg){errBox.textContent=msg; errBox.classList.add('show');}
     function hideErr(){errBox.classList.remove('show');}
 
-    const fsBtn = document.getElementById('fsBtn');
-    fsBtn.onclick = () => {
-      const el = document.documentElement;
-      if (!document.fullscreenElement) el.requestFullscreen().catch(()=>{});
-      else document.exitFullscreen();
-    };
+    window.addEventListener('error', e=> showErr('스크립트 에러: '+(e.message||'unknown')));
 
-    function relTime(ts){
-      if(!ts) return "";
-      const s = Math.floor((Date.now()-ts)/1000);
-      if (s < 60) return `${s}초 전`;
-      const m = Math.floor(s/60); if (m < 60) return `${m}분 전`;
-      const h = Math.floor(m/60); if (h < 24) return `${h}시간 전`;
-      const d = Math.floor(h/24); return `${d}일 전`;
-    }
-    function locColor(loc){
-      // 색상 규칙
-      if (loc === '상담대기중') return 'var(--red-dim)';
-      if (loc === '귀가' || loc === '수납후미귀가') return 'var(--gray)';
-      if (loc === '원내대기중') return 'var(--yellow)';
-      if (loc === '카페콜완료' || loc === '카페콜완료(오시는중)') return 'var(--green)';
-      if (loc === '외출' || loc === '카페대기중') return 'var(--blue)';
-      return '#111827';
-    }
-
-    function getStationName(){
-      const key = 'station_name';
-      let v = localStorage.getItem(key);
-      if (!v){ v = prompt('이 컴퓨터 이름을 입력하세요 (예: 처치실1번, 리셉2번)') || ''; localStorage.setItem(key, v); }
-      return v;
-    }
-
-    try{
+    let app, db;
+    try {
       const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-      const { getFirestore, collection, onSnapshot, query, orderBy, runTransaction, doc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-      const { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+      const { getFirestore, collection, doc, onSnapshot, query, orderBy, runTransaction, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
 
-      const firebaseConfig = {
-        apiKey: "AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4",
-        authDomain: "bs-owner-monitor.firebaseapp.com",
-        projectId: "bs-owner-monitor"
-      };
-      const app = initializeApp(firebaseConfig);
-      const db  = getFirestore(app);
-      const auth = getAuth(app);
-      await setPersistence(auth, browserLocalPersistence);
-      const provider = new GoogleAuthProvider();
+      const firebaseConfig = { apiKey:"AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4", authDomain:"bs-owner-monitor.firebaseapp.com", projectId:"bs-owner-monitor" };
+      app = initializeApp(firebaseConfig);
+      db  = getFirestore(app);
 
-      const loginBtn = document.getElementById('loginBtn');
-      const logoutBtn= document.getElementById('logoutBtn');
-      const whoami   = document.getElementById('whoami');
-      const conn     = document.getElementById('conn');
-      const ding     = document.getElementById('ding');
+      const whoEl   = document.getElementById('who');
+      const whereEl = document.getElementById('where');
+      const metaEl  = document.getElementById('meta');
+      const ding    = document.getElementById('ding');
+      const callBtn = document.getElementById('callBtn');
+      const clearBtn= document.getElementById('clearBtn');
+      const cafeDoneBtn = document.getElementById('cafeDoneBtn');
+      const awayDoneBtn = document.getElementById('awayDoneBtn');
+      const caseSel = document.getElementById('caseSelect');
+      const conn    = document.getElementById('conn');
+      const selftest= document.getElementById('selftest');
 
-      let canWrite = false;
-      function updateWriteAbility(user){
-        if (user && ["bscat5653@gmail.com","moyadais@gmail.com"].includes(user.email||"")) {
-          canWrite = true;
-          whoami.textContent = user.email;
-          loginBtn.style.display = 'none';
-          logoutBtn.style.display = '';
-        } else {
-          canWrite = false;
-          whoami.textContent = user? user.email : '';
-          loginBtn.style.display = '';
-          logoutBtn.style.display = 'none';
-        }
-        // 버튼 활성/비활성은 각 카드 렌더 시 반영
-      }
+      conn.textContent = "연결됨(초기)"; conn.className = "pill ok";
 
-      loginBtn.onclick = async ()=>{ try{ await signInWithPopup(auth, provider);}catch(e){ showErr(e.message);} };
-      logoutBtn.onclick= async ()=>{ await signOut(auth); };
-      onAuthStateChanged(auth, user=> updateWriteAbility(user));
+      let unsubCase = null;
+      let currentCaseId = null;
+      let lastVersion = 0;
 
-      conn.textContent = "연결됨"; conn.className = "pill ok";
-
-      let cache = [];
+      // 환자 목록
       onSnapshot(query(collection(db,"cases"), orderBy("createdAt","desc")), (snap)=>{
         hideErr();
-        cache = snap.docs.map(d=> ({ id:d.id, ...d.data() }));
-        render();
+        const selVal = caseSel.value;
+        caseSel.innerHTML = "";
+        snap.forEach(d=>{
+          const o = document.createElement('option');
+          const data = d.data();
+          const pn = data.patientName||""; const gn = data.guardianName||"";
+          o.value = d.id;
+          o.textContent = (pn&&gn) ? `${pn}(${gn})` : (pn||gn||d.id);
+          caseSel.appendChild(o);
+        });
+        if (snap.size && (!selVal || ![...caseSel.options].some(o=>o.value===selVal))) {
+          caseSel.selectedIndex = 0;
+          selectCase(caseSel.value);
+        } else if (selVal) {
+          caseSel.value = selVal;
+        }
       }, (e)=>{ conn.textContent="연결 오류"; conn.className="pill err"; showErr("목록 구독 실패: "+e.message); });
 
-      q.oninput = render; filter.onchange = render;
+      caseSel.onchange = ()=> selectCase(caseSel.value);
 
-      function render(){
-        const term = (q.value||"").trim().toLowerCase();
-        const f = (filter.value||"");
-        const list = cache.filter(d=>{
-          const name = `${d.patientName||''} ${d.guardianName||''}`.toLowerCase();
-          const okName = term? name.includes(term) : true;
-          const okLoc  = f? d.location===f : true;
-          return okName && okLoc;
-        });
+      function selectCase(id){
+        if (unsubCase) { unsubCase(); unsubCase = null; }
+        currentCaseId = id;
+        lastVersion = 0;
+        if (!id) return;
+        unsubCase = onSnapshot(doc(db,"cases",id), (snap)=>{
+          hideErr();
+          if (!snap.exists()) return;
+          const d = snap.data();
+          const pn = d.patientName || "";
+          const gn = d.guardianName || "";
+          const displayName = (pn&&gn) ? `${pn}(${gn})` : (pn||gn||"이름 미입력");
+          whoEl.textContent = displayName;
 
-        grid.innerHTML = '';
-        list.forEach(d=> grid.appendChild(cardEl(d)) );
+          whereEl.textContent = d.location || "알 수 없음";
+          const t = d.updatedAt ? new Date(d.updatedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : "";
+          const req = d.callRequested ? " · 콜요청중" : "";
+          metaEl.textContent = t ? `업데이트: ${t}${req}` : (d.callRequested ? "콜요청중" : "");
+
+          if (d.version && d.version !== lastVersion) {
+            lastVersion = d.version;
+            try { ding.currentTime = 0; ding.play().catch(()=>{}); } catch(e){}
+            whereEl.classList.remove('blink'); void whereEl.offsetWidth; whereEl.classList.add('blink');
+          }
+        }, (e)=>{ conn.textContent="연결 오류"; conn.className="pill err"; showErr("환자 구독 실패: "+e.message); });
       }
 
-      function displayLocation(d){
-        if (d.location === '카페콜완료(오시는중)' && typeof d.etaMinutes === 'number'){
-          return `카페콜완료(오시는중: ${d.etaMinutes}분)`;
-        }
-        return d.location || '';
-      }
-
-      function requestedByText(d){
-        return d.callRequestedBy ? ` (요청: ${d.callRequestedBy})` : '';
-        }
-
-      function cardEl(d){
-        const el = document.createElement('div'); el.className = 'pcard';
-        if (d.callRequested) el.classList.add('calling');
-
-        const header = document.createElement('div'); header.className='head';
-        const name = document.createElement('div'); name.className='name';
-        const display = (d.patientName||d.guardianName) ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName)) : d.id;
-        name.textContent = display;
-        const badge = document.createElement('span'); badge.className='badge';
-        badge.style.background = locColor(d.location||'');
-        badge.style.color = (d.location==="카페대기중")? '#111' : '#fff';
-        badge.textContent = displayLocation(d) || '상태없음';
-        header.appendChild(name); header.appendChild(badge);
-
-        const loc = document.createElement('div'); loc.className='loc'; loc.textContent = displayLocation(d);
-        const meta = document.createElement('div'); meta.className='meta';
-        meta.textContent = `업데이트: ${relTime(d.updatedAt||0)}${d.callRequested? ' · 콜요청중':''}${requestedByText(d)}`;
-
-        const actions = document.createElement('div'); actions.className='actions';
-        const callBtn = document.createElement('button'); callBtn.className='btn'; callBtn.textContent='📣 콜 요청';
-        const clearBtn= document.createElement('button'); clearBtn.className='btn ghost'; clearBtn.textContent='요청 표시 지우기';
-        const comingBtn= document.createElement('button'); comingBtn.className='btn ghost'; comingBtn.textContent='오시는중';
-
-        if (!canWrite){ [callBtn, clearBtn, comingBtn].forEach(b=>b.classList.add('disabled')); }
-
-        callBtn.onclick = ()=> updateCase(d.id,{ callRequested:true, callRequestedAt: Date.now(), callRequestedBy: getStationName() });
-        clearBtn.onclick= ()=> updateCase(d.id,{ callRequested:false });
-        comingBtn.onclick= ()=> {
-          const m = prompt('몇 분 후 도착 예정인가요? (숫자만)');
-          if (m===null) return;
-          const mins = Number(m);
-          if (!Number.isFinite(mins) || mins<0) { showErr('숫자를 입력하세요'); return; }
-          updateCase(d.id,{ location:'카페콜완료(오시는중)', etaMinutes: mins, callRequested:false });
-        };
-
-        actions.appendChild(callBtn); actions.appendChild(clearBtn); actions.appendChild(comingBtn);
-
-        el.appendChild(header);
-        el.appendChild(loc);
-        el.appendChild(meta);
-        el.appendChild(actions);
-
-        return el;
-      }
-
-      async function updateCase(id, data){
-        if (!canWrite) return showErr('로그인 후 사용하세요');
-        try{
+      async function updateCase(data){
+        if (!currentCaseId) return showErr("환자를 먼저 선택하세요.");
+        const ref = doc(db,"cases", currentCaseId);
+        try {
           await runTransaction(db, async (tx)=>{
-            const ref = doc(db,'cases', id);
             const snap = await tx.get(ref);
             const prev = snap.exists()? snap.data(): {version:0};
-            tx.set(ref, { ...data, updatedAt: Date.now(), version:(prev.version||0)+1 }, { merge:true });
+            tx.set(ref, { ...data, version:(prev.version||0)+1 }, { merge:true });
           });
-          hideErr();
-        }catch(e){ showErr('저장 실패: '+e.message); }
+        } catch(e){
+          showErr("저장 실패: "+e.message);
+        }
       }
 
-    }catch(e){
-      showErr('Firebase 초기화 실패: '+(e.message||e));
-      const conn = document.getElementById('conn'); if (conn){ conn.textContent='초기화 오류'; conn.className='pill err'; }
+      callBtn.onclick = ()=> updateCase({ callRequested:true, callRequestedAt: Date.now() });
+      clearBtn.onclick= ()=> updateCase({ callRequested:false });
+      // 보호자 상태: 카페콜완료 / 외출콜완료
+      cafeDoneBtn.onclick = ()=> updateCase({ location: '카페콜완료', updatedAt: Date.now() });
+      awayDoneBtn.onclick = ()=> updateCase({ location: '외출콜완료', updatedAt: Date.now() });
+
+      selftest.onclick = async ()=>{
+        try {
+          const ref = doc(db,"healthcheck","display");
+          await setDoc(ref, { ping: Date.now() }, { merge:true });
+          conn.textContent="연결 정상"; conn.className="pill ok";
+          hideErr();
+        } catch(e){ conn.textContent="연결 오류"; conn.className="pill err"; showErr("연결 테스트 실패: "+e.message); }
+      };
+
+    } catch(e) {
+      showErr("Firebase 초기화 실패: "+(e.message||e));
+      const conn = document.getElementById('conn'); conn.textContent="초기화 오류"; conn.className="pill err";
     }
   </script>
 </body>
