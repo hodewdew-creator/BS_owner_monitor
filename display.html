@@ -30,13 +30,13 @@
     .btn{cursor:pointer;border:0;border-radius:12px;padding:10px 14px;font-weight:800;background:#1f2937;color:#fff;border:1px solid #374151}
     .btn.ghost{background:transparent}
 
-    /* 상태 버튼/배지 색상 */
+    /* 상태 버튼/배지 색상 (새 매핑) */
     .bg-상담대기중{background:#dc2626;color:#fff}
-    .bg-원내대기중{background:#f97316;color:#000}
-    .bg-카페대기중{background:#f97316;color:#000}
+    .bg-원내대기중{background:#fed7aa;color:#000}
+    .bg-카페대기중{background:#fed7aa;color:#000}
     .bg-외출중{background:#38bdf8;color:#000}
-    .bg-카페콜완료{background:#166534;color:#fff}
-    .bg-외출콜완료{background:#166534;color:#fff}
+    .bg-카페콜완료{background:#22c55e;color:#fff}
+    .bg-외출콜완료{background:#22c55e;color:#fff}
     .bg-귀가{background:#9ca3af;color:#000}
     .bg-수납후미귀가{background:#9ca3af;color:#000}
 
@@ -135,15 +135,12 @@
         const actions = document.createElement('div'); actions.className='actions';
         const callBtn = document.createElement('button'); callBtn.className='btn'; callBtn.textContent='📣 콜 요청';
         const clearBtn= document.createElement('button'); clearBtn.className='btn ghost'; clearBtn.textContent='요청 지우기';
-        const cafeDone= document.createElement('button'); cafeDone.className='btn bg-카페콜완료'; cafeDone.textContent='카페콜완료';
-        const awayDone= document.createElement('button'); awayDone.className='btn bg-외출콜완료'; awayDone.textContent='외출콜완료';
 
         callBtn.onclick = ()=> updateCase(d.id,{ callRequested:true, callRequestedAt: Date.now() });
         clearBtn.onclick= ()=> updateCase(d.id,{ callRequested:false });
-        cafeDone.onclick = ()=> updateCase(d.id,{ location:'카페콜완료', updatedAt: Date.now(), callRequested:false });
-        awayDone.onclick = ()=> updateCase(d.id,{ location:'외출콜완료', updatedAt: Date.now(), callRequested:false });
 
-        actions.appendChild(callBtn); actions.appendChild(clearBtn); actions.appendChild(cafeDone); actions.appendChild(awayDone);
+        actions.appendChild(callBtn);
+        actions.appendChild(clearBtn);
 
         el.appendChild(header);
         el.appendChild(loc);
@@ -175,3 +172,4 @@
   </script>
 </body>
 </html>
+
