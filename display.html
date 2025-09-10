@@ -49,19 +49,27 @@
     .b-카페콜완료,.b-외출콜완료{background:#22c55e; border-color:transparent}
     .b-귀가,.b-수납후미귀가{background:#e5e7eb; color:#111; border-color:transparent}
 
-    /* ▼ 메모: 환자이름과 같은 크기(18px), 노란 배경 + 검정 글씨로 가독성 강화 */
-    .memo{
-      display:none;
-      font-size:14px;          /* 이름과 동일 */
-      line-height:1.25;
-      font-weight:800;         /* 또렷하게 */
-      color:#111;              /* 검정 글씨 */
-      background:#fde68a;      /* 노란 배경 (amber-300) */
-      border:1px solid #f59e0b;/* 살짝 진한 테두리 */
-      padding:5px 5px;
-      border-radius:10px;
-    }
-    .memo.show{display:block}
+/* 기존 .memo 블록 교체 */
+.memo{
+  display:none;             /* 기본은 숨김 */
+  font-size:14px;           /* 필요시 18px로 */
+  line-height:1.25;
+  font-weight:800;
+  color:#111;               /* 검정 글씨 */
+  background:#fde68a;       /* 노란 배경 */
+  border:1px solid #f59e0b;
+  padding:5px 8px;
+  border-radius:10px;
+
+  /* 핵심: 텍스트 너비만큼만 박스 */
+  display:inline-block;     /* shrink-to-fit */
+  align-self:flex-start;    /* flex stretch 방지 */
+
+  /* 안전장치(줄바꿈/오버플로 방지) */
+  max-width:100%;
+  overflow-wrap: anywhere;  /* 긴 단어도 줄바꿈 */
+}
+.memo.show{ display:inline-block; } /* 보일 때도 inline-block 유지 */
 
     .meta{font-size:12px; color:var(--muted)}
 
