@@ -3,14 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>보호자 위치 (리셉션)</title>
+  <title>리셉션 · 보호자 상태 관리</title>
   <style>
     :root{
       --bg:#fafafa; --card:#ffffff; --border:#e5e7eb;
       --fg:#0f172a; --muted:#64748b;
-      --ok:#2563eb; --danger:#ef4444; --pill:#1f2937;
+      --ok:#2563eb; --pill:#1f2937;
     }
     html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto}
+
     /* 상단 우측: 로그인/로그아웃 */
     .topbar{
       position:sticky; top:0; z-index:50;
@@ -32,18 +33,17 @@
     }
     label{display:block; font-size:12px; color:var(--muted); margin:0 0 4px 2px}
 
-    /* 입력 줄은 한 줄 유지 (좁으면 가로 스크롤) */
+    /* 입력 줄은 한 줄 고정 (스크롤 없이 최소폭 축소) */
     .inputs-wrap{
-      display:flex; gap:8px; align-items:flex-end;
-      overflow-x:auto; padding-bottom:4px;
+      display:flex; gap:8px; align-items:flex-end; flex-wrap:nowrap;
     }
     .inputs-wrap input{
-      flex:0 0 160px; min-width:160px;
-      padding:10px 12px; border:1px solid #cbd5e1; border-radius:10px; font-size:16px; background:#fff;
+      flex:1 1 80px; min-width:80px;  /* ← 요청: 각각 최소너비 80px */
+      padding:8px 10px; border:1px solid #cbd5e1; border-radius:10px; font-size:15px; background:#fff;
     }
-    .btn{cursor:pointer;border:0;border-radius:10px;padding:12px 14px;font-weight:700;background:#e2e8f0}
+    .btn{cursor:pointer;border:0;border-radius:10px;padding:12px 14px;font-weight:700;background:#e2e8f0;white-space:nowrap}
     .btn.ok{background:var(--ok);color:#fff}
-    .btn.danger{background:var(--danger);color:#fff}
+    .btn.danger{background:#111827;color:#fff} /* ← 삭제 버튼: 검은색 */
 
     .small{font-size:12px;opacity:.75;margin-top:8px}
 
@@ -85,7 +85,7 @@
   </div>
 
   <main>
-    <h1>보호자 위치 업데이트</h1>
+    <h1>리셉션 · 보호자 상태 관리</h1>
 
     <div id="err" class="errbox"></div>
 
@@ -95,7 +95,7 @@
     </div>
 
     <div id="panel" style="display:none">
-      <!-- 환자 입력 + 추가 (항상 한 줄 유지) -->
+      <!-- 환자 입력 + 추가 (한 줄 고정) -->
       <div class="card">
         <div class="inputs-wrap">
           <div>
@@ -194,7 +194,7 @@
         }
       });
 
-      // 신규 환자 추가 (한 줄 유지용 레이아웃이라 로직은 동일)
+      // 신규 환자 추가
       const patientName = document.getElementById('patientName');
       const guardianName= document.getElementById('guardianName');
       const addCaseBtn  = document.getElementById('addCase');
@@ -230,7 +230,7 @@
 
       ROW1.forEach(s=> row1.appendChild(makeBtn(s, ()=>applyGlobalState(s))));
       ROW2.forEach(s=> row2.appendChild(makeBtn(s, ()=>applyGlobalState(s))));
-      // 삭제 버튼(두 번째 줄 끝)
+      // 삭제 버튼(두 번째 줄 끝, 검은색)
       const delBtn = makeBtn("삭제", onDelete, "btn danger");
       row2.appendChild(delBtn);
 
@@ -243,10 +243,21 @@
           : id;
       }
 
+      // 상태 텍스트 컬러 맵 (톤 다운)
+      function colorForState(s){
+        if (s==="상담대기중") return "#dc2626";                 // red-600
+        if (s==="원내대기중" || s==="카페대기중") return "#d97706"; // amber-600
+        if (s==="외출중") return "#0284c7";                      // sky-600
+        if (s==="카페콜완료" || s==="외출콜완료") return "#16a34a"; // green-600
+        // 귀가 / 수납후미귀가 => 기본색
+        return ""; 
+      }
+
       function renderLine(id, d){
         const line = document.createElement('div'); line.className = 'line'; line.dataset.id = id;
         const name = document.createElement('div'); name.className='name'; name.textContent = prettyName(d,id);
         const state= document.createElement('div'); state.className='state'; state.textContent = d.location || '';
+        const color = colorForState(d.location||""); if (color) state.style.color = color;
         const upd  = document.createElement('div'); upd.className='updated'; upd.textContent = d.updatedAt ? relTime(d.updatedAt) : '';
         line.appendChild(name); line.appendChild(state); line.appendChild(upd);
         line.onclick = ()=>{
