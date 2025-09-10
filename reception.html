@@ -38,7 +38,7 @@
     .whoami{font-size:12px;opacity:.7}
 
     /* 팝업 글씨 크게 */
-    .alert{display:none;margin:10px 0;padding:18px 20px;border-radius:12px;border:2px solid #ef4444;background:#fef2f2;color:#991b1b;font-weight:900;font-size:20px}
+    .alert{display:none;margin:10px 0;padding:18px 20px;border-radius:12px;border:2px solid #ef4444;background:#fef2f2;color:#991b1b;font-weight:900; font-size:20px}
     .alert.show{display:block;animation:pop .5s}
     @keyframes pop{from{transform:scale(.98)}to{transform:scale(1)}}
   </style>
@@ -56,9 +56,7 @@
   </div>
 
   <!-- 콜요청 알림 (요청 스테이션 표시) -->
-  <div id="alertBox" class="alert">
-    📣 처치실에서 <span id="alertWho"></span> 콜 요청
-    <span id="byStation" style="font-size:14px;opacity:.8"></span>!
+  <div id="alertBox" class="alert">📣 처치실에서 <span id="alertWho"></span> 콜 요청 <span id="byStation" style="font-size:14px;opacity:.8"></span>!
     <button id="ack" class="ok" style="margin-left:8px">처리완료</button>
   </div>
 
@@ -76,7 +74,7 @@
         </div>
         <button id="addCase" class="ok">환자 추가</button>
       </div>
-      <div class="small">* 표시에는 "고양이이름(보호자)"로 노출됩니다.</div>
+      <div class="small">* 표시에는 \"고양이이름(보호자)\"로 노출됩니다.</div>
 
       <!-- 공용 상태 버튼 -->
       <div style="margin-top:10px">
@@ -112,17 +110,38 @@
   </audio>
 
   <script type="module">
-    // ---------- 에러 수집 강화 ----------
     const errBox = document.getElementById('err');
-    function showErr(msg){ try{console.error(msg);}catch{} errBox.textContent=msg; errBox.classList.add('show');}
+    function showErr(msg){errBox.textContent=msg; errBox.classList.add('show');}
     function hideErr(){errBox.classList.remove('show');}
-    window.addEventListener('error', e=> showErr('스크립트 에러: '+(e.message||'unknown')));
-    window.addEventListener('unhandledrejection', e=> showErr('처리되지 않은 오류: '+(e.reason && e.reason.message ? e.reason.message : e.reason)));
-
     const relTime = (ts)=>{
       if(!ts) return "";
       const s = Math.floor((Date.now()-ts)/1000);
-      if (s < 60) return `${
+      if (s < 60) return `${s}초 전`;
+      const m = Math.floor(s/60); if (m < 60) return `${m}분 전`;
+      const h = Math.floor(m/60); if (h < 24) return `${h}시간 전`;
+      const d = Math.floor(h/24); return `${d}일 전`;
+    };
 
+    function getStationName(){
+      const key = 'station_name';
+      let v = localStorage.getItem(key);
+      if (!v){ v = prompt('이 컴퓨터 이름을 입력하세요 (예: 리셉1번, 리셉2번)') || ''; localStorage.setItem(key, v); }
+      return v;
+    }
 
+    window.addEventListener('error', e=> showErr('스크립트 에러: '+(e.message||'unknown')));
 
+    try {
+      const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+      const { getFirestore, collection, addDoc, onSnapshot, doc, runTransaction, query, orderBy, setDoc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      const { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4",
+        authDomain: "bs-owner-monitor.firebaseapp.com",
+        projectId: "bs-owner-monitor"
+      };
+      const app = initializeApp(firebaseConfig);
+      const db  = getFirestore(app);
+      const auth = getAuth(app);
+      await setPersistence(auth, browserLocalPers
