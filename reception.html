@@ -38,7 +38,7 @@
     .whoami{font-size:12px;opacity:.7}
 
     /* 팝업 글씨 크게 */
-    .alert{display:none;margin:10px 0;padding:18px 20px;border-radius:12px;border:2px solid #ef4444;background:#fef2f2;color:#991b1b;font-weight:900; font-size:20px}
+    .alert{display:none;margin:10px 0;padding:18px 20px;border-radius:12px;border:2px solid #ef4444;background:#fef2f2;color:#991b1b;font-weight:900;font-size:20px}
     .alert.show{display:block;animation:pop .5s}
     @keyframes pop{from{transform:scale(.98)}to{transform:scale(1)}}
   </style>
@@ -56,7 +56,9 @@
   </div>
 
   <!-- 콜요청 알림 (요청 스테이션 표시) -->
-  <div id="alertBox" class="alert">📣 처치실에서 <span id="alertWho"></span> 콜 요청 <span id="byStation" style="font-size:14px;opacity:.8"></span>!
+  <div id="alertBox" class="alert">
+    📣 처치실에서 <span id="alertWho"></span> 콜 요청
+    <span id="byStation" style="font-size:14px;opacity:.8"></span>!
     <button id="ack" class="ok" style="margin-left:8px">처리완료</button>
   </div>
 
@@ -74,7 +76,7 @@
         </div>
         <button id="addCase" class="ok">환자 추가</button>
       </div>
-      <div class="small">* 표시에는 \"고양이이름(보호자)\"로 노출됩니다.</div>
+      <div class="small">* 표시에는 "고양이이름(보호자)"로 노출됩니다.</div>
 
       <!-- 공용 상태 버튼 -->
       <div style="margin-top:10px">
@@ -110,165 +112,17 @@
   </audio>
 
   <script type="module">
+    // ---------- 에러 수집 강화 ----------
     const errBox = document.getElementById('err');
-    function showErr(msg){errBox.textContent=msg; errBox.classList.add('show');}
+    function showErr(msg){ try{console.error(msg);}catch{} errBox.textContent=msg; errBox.classList.add('show');}
     function hideErr(){errBox.classList.remove('show');}
+    window.addEventListener('error', e=> showErr('스크립트 에러: '+(e.message||'unknown')));
+    window.addEventListener('unhandledrejection', e=> showErr('처리되지 않은 오류: '+(e.reason && e.reason.message ? e.reason.message : e.reason)));
+
     const relTime = (ts)=>{
       if(!ts) return "";
       const s = Math.floor((Date.now()-ts)/1000);
-      if (s < 60) return `${s}초 전`;
-      const m = Math.floor(s/60); if (m < 60) return `${m}분 전`;
-      const h = Math.floor(m/60); if (h < 24) return `${h}시간 전`;
-      const d = Math.floor(h/24); return `${d}일 전`;
-    };
+      if (s < 60) return `${
 
-    function getStationName(){
-      const key = 'station_name';
-      let v = localStorage.getItem(key);
-      if (!v){ v = prompt('이 컴퓨터 이름을 입력하세요 (예: 리셉1번, 리셉2번)') || ''; localStorage.setItem(key, v); }
-      return v;
-    }
-
-    window.addEventListener('error', e=> showErr('스크립트 에러: '+(e.message||'unknown')));
-
-    try {
-      const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-      const { getFirestore, collection, addDoc, onSnapshot, doc, runTransaction, query, orderBy, setDoc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-      const { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
-
-      const firebaseConfig = {
-        apiKey: "AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4",
-        authDomain: "bs-owner-monitor.firebaseapp.com",
-        projectId: "bs-owner-monitor"
-      };
-      const app = initializeApp(firebaseConfig);
-      const db  = getFirestore(app);
-      const auth = getAuth(app);
-      await setPersistence(auth, browserLocalPersistence);
-      const provider = new GoogleAuthProvider();
-
-      // UI refs
-      const loginBtn = document.getElementById('loginBtn');
-      const logoutBtn= document.getElementById('logoutBtn');
-      const whoami   = document.getElementById('whoami');
-      const panel    = document.getElementById('panel');
-      const conn     = document.getElementById('conn');
-      const selftest = document.getElementById('selftest');
-
-      // Auth
-      loginBtn.onclick = async () => { try { await signInWithPopup(auth, provider); } catch(e){ showErr(e.message); } };
-      logoutBtn.onclick= async () => { await signOut(auth); };
-
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          whoami.textContent = user.email;
-          panel.style.display = \"\";     // 로그인되면 패널 표시
-          logoutBtn.style.display = \"\";
-        } else {
-          whoami.textContent = \"\";
-          panel.style.display = \"none\";
-          logoutBtn.style.display = \"none\";
-        }
-      });
-
-      // 신규 환자 추가
-      const patientName = document.getElementById('patientName');
-      const guardianName= document.getElementById('guardianName');
-      const addCaseBtn  = document.getElementById('addCase');
-      addCaseBtn.onclick = async ()=>{
-        const pn = patientName.value.trim();
-        const gn = guardianName.value.trim();
-        if (!pn && !gn) return showErr(\"이름을 입력하세요.\");
-        try {
-          await addDoc(collection(db,\"cases\"),{
-            patientName: pn, guardianName: gn,
-            location:\"원내대기중\",
-            createdAt: Date.now(), updatedAt: Date.now(),
-            version:1, callRequested:false
-          });
-          patientName.value = \"\"; guardianName.value = \"\"; hideErr();
-        } catch(e){ showErr(\"환자 추가 실패: \"+e.message); }
-      };
-
-      // 공용 상태 버튼 구성 + 오시는중
-      const globalStatesWrap = document.getElementById('globalStates');
-      const STATES = [\"원내대기중\",\"상담대기중\",\"카페대기중\",\"카페콜완료\",\"오시는중\",\"외출\",\"귀가\",\"수납후미귀가\"]; // 오시는중 포함
-      STATES.forEach(s=>{
-        const b = document.createElement('button');
-        b.textContent = s;
-        b.onclick = ()=> applyGlobalState(s);
-        globalStatesWrap.appendChild(b);
-      });
-
-      let selectedId = null; // 선택된 환자
-      const caseList = document.getElementById('caseList');
-
-      function displayLocation(d){
-        if (d.location === '카페콜완료(오시는중)' && typeof d.etaMinutes === 'number'){
-          return `카페콜완료(오시는중: ${d.etaMinutes}분)`;
-        }
-        return d.location || '';
-      }
-
-      function renderLine(id, d){
-        const line = document.createElement('div'); line.className = 'line'; line.dataset.id = id;
-
-        const display = (d.patientName||d.guardianName) ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName)) : id;
-
-        const name = document.createElement('div'); name.className='name'; name.textContent = display;
-        const state= document.createElement('div'); state.className='state'; state.textContent = displayLocation(d);
-        const reqBy= d.callRequestedBy ? ` (요청: ${d.callRequestedBy})` : '';
-        const upd  = document.createElement('div'); upd.className='updated'; upd.textContent = (d.updatedAt ? relTime(d.updatedAt) : '') + reqBy;
-
-        line.appendChild(name); line.appendChild(state); line.appendChild(upd);
-
-        line.onclick = ()=>{
-          selectedId = id;
-          [...caseList.children].forEach(el=> el.classList.remove('select'));
-          line.classList.add('select');
-        };
-
-        if (d.callRequested) line.classList.add('calling');
-        return line;
-      }
-
-      async function updateCase(id, data){
-        try {
-          await runTransaction(db, async (tx)=>{
-            const ref = doc(db,\"cases\", id);
-            const snap = await tx.get(ref);
-            const prev = snap.exists()? snap.data(): {version:0};
-            tx.set(ref, { ...data, updatedAt: Date.now(), version:(prev.version||0)+1 }, { merge:true });
-          });
-          hideErr();
-        } catch(e){ showErr(\"저장 실패: \"+e.message); }
-      }
-
-      async function applyGlobalState(state){
-        if (!selectedId) { showErr(\"먼저 환자 한 명을 리스트에서 클릭해 선택하세요.\"); return; }
-        if (state === \"귀가\") {
-          const yes = confirm(\"리스트에서 삭제할까요? (예: 문서를 삭제 / 아니오: 상태만 '귀가'로 표시)\");
-          if (yes) {
-            try { await deleteDoc(doc(db,\"cases\", selectedId)); hideErr(); selectedId = null; }
-            catch(e){ showErr(\"삭제 실패: \"+e.message); }
-            return;
-          }
-        }\n        if (state === \"오시는중\"){\n          const m = prompt('몇 분 후 도착 예정인가요? (숫자만)');\n          if (m===null) return;\n          const mins = Number(m);\n          if (!Number.isFinite(mins) || mins<0) { showErr('숫자를 입력하세요'); return; }\n          await updateCase(selectedId, { location:'카페콜완료(오시는중)', etaMinutes: mins, callRequested:false });\n          return;\n        }\n        await updateCase(selectedId, { location: state, callRequested:false });\n      }\n\n      // 실시간 리스트 & 콜요청 알림 + 강조\n      const alertBox = document.getElementById('alertBox');\n      const alertWho = document.getElementById('alertWho');\n      const byStation= document.getElementById('byStation');\n      const bell     = document.getElementById('bell');\n      const ackBtn   = document.getElementById('ack');\n\n      onSnapshot(query(collection(db,\"cases\"), orderBy(\"createdAt\",\"desc\")), (snap)=>{\n        hideErr();\n        caseList.innerHTML = \"\";\n        let firstId = null;\n        let anyReq = null;\n\n        snap.forEach(docu=>{\n          const d = docu.data();\n          const el = renderLine(docu.id, d);\n          caseList.appendChild(el);\n          if (!firstId) firstId = docu.id;\n          if (d.callRequested) anyReq = { id: docu.id, d };\n        });\n\n        if (!selectedId && firstId) {\n          selectedId = firstId;\n          const firstEl = caseList.querySelector('[data-id=\"'+firstId+'\"]');\n          if (firstEl) firstEl.classList.add('select');\n        }\n\n        if (anyReq) {\n          const d = anyReq.d;\n          const name = (d.patientName||d.guardianName) ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName)) : anyReq.id;\n          alertWho.textContent = name;\n          byStation.textContent = d.callRequestedBy ? ` (요청: ${d.callRequestedBy})` : '';\n          alertBox.classList.add('show');\n          try { bell.currentTime = 0; bell.play().catch(()=>{}); } catch(e){}\n          ackBtn.onclick = ()=> updateCase(anyReq.id, { callRequested:false, location:\"카페콜완료\" });\n        } else {\n          alertBox.classList.remove('show');\n        }\n\n        conn.textContent=\"연결됨\"; conn.className=\"pill ok\";\n      }, (e)=>{ conn.textContent=\"연결 오류\"; conn.className=\"pill err\"; showErr(\"리스트 구독 실패: \"+e.message); });\n\n      // 연결 테스트\n      selftest.onclick = async ()=>{\n        try {\n          await setDoc(doc(db,\"healthcheck\",\"reception\"), { ping: Date.now(), station: getStationName() }, { merge:true });\n          conn.textContent=\"연결 정상\"; conn.className=\"pill ok\"; hideErr();\n        } catch(e){ conn.textContent=\"연결 오류\"; conn.className=\"pill err\"; showErr(\"연결 테스트 실패: \"+e.message); }\n      };\n\n    } catch(e) {\n      showErr(\"Firebase 초기화 실패: \"+(e.message||e));\n      const conn = document.getElementById('conn'); conn.textContent=\"초기화 오류\"; conn.className=\"pill err\";\n    }\n  </script>\n</body>\n</html>\n```
-
----
-
-## 적용 방법
-- **display.html**: 캔버스의 최신 코드를 복사해 파일 교체 → Vercel 재배포. (기존 파일 기반: :contentReference[oaicite:2]{index=2})  
-- **reception.html**: 위 코드 전체로 교체 → Vercel 재배포. (기존 파일 기반: :contentReference[oaicite:3]{index=3})
-
-## 확인 체크리스트
-- 리셉/디스플레이 모두 첫 실행 시 **스테이션 이름** 물어보는지  
-- 콜요청 시 팝업이 **더 크게** 나오고, `(요청: 스테이션)` 표시되는지  
-- **오시는중**에서 분 입력 시 `카페콜완료(오시는중: N분)`로 보이는지  
-- 색상 매핑이 요청대로 적용됐는지  
-- 여러 기기에서 동시에 켰을 때 **실시간 동기화** 되는지
-
-더 바꾸고 싶은 문구/색조(예: 상담대기중 색을 더 밝게) 있으면 콕 찍어줘—캔버스에서 바로 조정해서 반영할게!
-::contentReference[oaicite:4]{index=4}
 
 
