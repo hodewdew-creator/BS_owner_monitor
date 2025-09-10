@@ -3,17 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>보호자 위치 (리셉션·MVP)</title>
+  <title>보호자 위치 (리셉션·로그인 보강)</title>
   <style>
     body{margin:0;padding:16px;font-family:system-ui,-apple-system,Segoe UI,Roboto;background:#fafafa}
     h1{margin:0 0 12px}
-    .pin{display:flex;gap:8px;margin:8px 0 16px}
-    input[type=password],input[type=text]{flex:1;padding:12px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px;background:#fff}
+    .auth{display:flex;gap:8px;margin:8px 0 16px;align-items:center}
+    input[type=text]{flex:1;padding:12px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px;background:#fff}
     .row{display:flex;gap:8px;margin:8px 0;align-items:flex-end;flex-wrap:wrap}
     button{cursor:pointer;border:0;border-radius:10px;padding:12px 14px;font-weight:700;background:#e2e8f0}
     .ok{background:#2563eb;color:#fff}
-    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
-    .btn{background:#f1f5f9}
     .small{font-size:12px;opacity:.75;margin-top:8px}
     .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:12px}
     label{font-size:12px;color:#475569;margin-left:2px}
@@ -23,13 +21,12 @@
     .alert.show{display:block;animation:pop .5s}
     @keyframes pop{from{transform:scale(.98)}to{transform:scale(1)}}
     .muted{opacity:.6}
-    
-.statusbar{position:fixed;bottom:8px;left:8px;right:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.pill{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;background:#1f2937;color:#fff}
-.pill.ok{background:#16a34a}.pill.err{background:#dc2626}.pill.warn{background:#f59e0b}
-.errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700}
-.errbox.show{display:block}
-
+    .statusbar{position:fixed;bottom:8px;left:8px;right:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .pill{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;background:#1f2937;color:#fff}
+    .pill.ok{background:#16a34a}.pill.err{background:#dc2626}.pill.warn{background:#f59e0b}
+    .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700}
+    .errbox.show{display:block}
+    .whoami{font-size:12px;opacity:.7}
   </style>
 </head>
 <body>
@@ -37,12 +34,12 @@
 
   <div id="err" class="errbox"></div>
 
-  <!-- PIN-once: 12시간 유효 -->
-  <div id="pinGate" class="pin">
-    <input id="pin" type="password" placeholder="처음 입장 시 PIN 입력 (12시간 유지)" />
-    <button id="pinBtn" class="ok">잠금해제</button>
+  <!-- 로그인 박스 -->
+  <div id="authBox" class="auth">
+    <button id="loginBtn" class="ok">Google로 로그인</button>
+    <button id="logoutBtn" style="display:none">로그아웃</button>
+    <span id="whoami" class="whoami"></span>
   </div>
-  <div id="pinInfo" class="small muted" style="display:none"></div>
 
   <div id="alertBox" class="alert">📣 처치실에서 <span id="alertWho"></span> 콜 요청! <button id="ack" class="ok" style="margin-left:8px">처리완료</button></div>
 
@@ -85,50 +82,47 @@
 
     window.addEventListener('error', e=> showErr('스크립트 에러: '+(e.message||'unknown')));
 
-    let app, db;
     try {
       const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
       const { getFirestore, collection, addDoc, onSnapshot, doc, runTransaction, query, orderBy, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-const firebaseConfig = {
-  apiKey: "AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4",
-  authDomain: "bs-owner-monitor.firebaseapp.com",
-  projectId: "bs-owner-monitor"
-};
-      app = initializeApp(firebaseConfig);
-      db  = getFirestore(app);
+      const { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
 
-      // --- PIN once per 12h ---
-      const PIN_KEY = "reception_pin_until";
-      const pinGate = document.getElementById('pinGate');
-      const pinInfo = document.getElementById('pinInfo');
-      const pinInput= document.getElementById('pin');
-      const pinBtn  = document.getElementById('pinBtn');
-      const panel   = document.getElementById('panel');
+      const firebaseConfig = {
+        apiKey: "AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4",
+        authDomain: "bs-owner-monitor.firebaseapp.com",
+        projectId: "bs-owner-monitor"
+      };
+      const app = initializeApp(firebaseConfig);
+      const db  = getFirestore(app);
+      const auth = getAuth(app);
+      await setPersistence(auth, browserLocalPersistence);
+      const provider = new GoogleAuthProvider();
 
-      const conn = document.getElementById('conn');
+      // UI refs
+      const loginBtn = document.getElementById('loginBtn');
+      const logoutBtn= document.getElementById('logoutBtn');
+      const whoami   = document.getElementById('whoami');
+      const panel    = document.getElementById('panel');
+      const conn     = document.getElementById('conn');
       const selftest = document.getElementById('selftest');
 
-      const CORRECT_PIN = "1234"; // 운영 전 교체
-      const NOW = Date.now();
-      const until = Number(localStorage.getItem(PIN_KEY)||0);
-      if (until > NOW) {
-        pinGate.style.display = "none";
-        pinInfo.style.display = "";
-        pinInfo.textContent = "PIN 검증됨 · 만료: " + new Date(until).toLocaleString('ko-KR');
-        panel.style.display = "";
-      }
-      pinBtn.onclick = ()=>{
-        if (pinInput.value === CORRECT_PIN) {
-          const exp = Date.now() + 12*60*60*1000;
-          localStorage.setItem(PIN_KEY, String(exp));
-          pinGate.style.display = "none";
-          pinInfo.style.display = "";
-          pinInfo.textContent = "PIN 검증됨 · 만료: " + new Date(exp).toLocaleString('ko-KR');
-          panel.style.display = "";
-        } else showErr("PIN이 틀렸습니다.");
-      };
+      // Auth
+      loginBtn.onclick = async () => { try { await signInWithPopup(auth, provider); } catch(e){ showErr(e.message); } };
+      logoutBtn.onclick= async () => { await signOut(auth); };
 
-      // --- 신규 환자 추가 ---
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          whoami.textContent = user.email;
+          panel.style.display = "";     
+          logoutBtn.style.display = "";
+        } else {
+          whoami.textContent = "";
+          panel.style.display = "none";
+          logoutBtn.style.display = "none";
+        }
+      });
+
+      // 신규 환자 추가
       const patientName = document.getElementById('patientName');
       const guardianName= document.getElementById('guardianName');
       const addCaseBtn  = document.getElementById('addCase');
@@ -142,7 +136,7 @@ const firebaseConfig = {
         } catch(e){ showErr("환자 추가 실패: "+e.message); }
       };
 
-      // --- 리스트 ---
+      // 리스트
       const caseList = document.getElementById('caseList');
       function renderCaseItem(id, d){
         const wrap = document.createElement('div'); wrap.className="item";
@@ -156,7 +150,7 @@ const firebaseConfig = {
 
         const states = ["원내대기중","카페대기중","카페콜완료","외출","귀가"];
         const row = document.createElement('div'); row.style.display="flex"; row.style.gap="6px"; row.style.flexWrap="wrap";
-        states.forEach(s=>{ const b=document.createElement('button'); b.className="btn"; b.textContent=s; b.onclick=()=> updateCase(id, {location:s}); row.appendChild(b); });
+        states.forEach(s=>{ const b=document.createElement('button'); b.textContent=s; b.onclick=()=> updateCase(id, {location:s}); row.appendChild(b); });
 
         const call = document.createElement('button'); call.textContent="📣 콜요청 표시 지우기"; call.onclick = ()=> updateCase(id, { callRequested:false }); call.style.marginLeft="6px";
         const del  = document.createElement('button'); del.textContent="표시 숨기기(귀가로)"; del.onclick = ()=> updateCase(id, { location:"귀가", callRequested:false }); del.style.marginLeft="6px";
@@ -169,9 +163,9 @@ const firebaseConfig = {
       }
 
       async function updateCase(id, data){
-        const ref = doc(db,"cases", id);
         try {
           await runTransaction(db, async (tx)=>{
+            const ref = doc(db,"cases", id);
             const snap = await tx.get(ref);
             const prev = snap.exists()? snap.data(): {version:0};
             tx.set(ref, { ...data, updatedAt: Date.now(), version:(prev.version||0)+1 }, { merge:true });
@@ -187,7 +181,7 @@ const firebaseConfig = {
         conn.textContent="연결됨"; conn.className="pill ok";
       }, (e)=>{ conn.textContent="연결 오류"; conn.className="pill err"; showErr("리스트 구독 실패: "+e.message); });
 
-      // --- 콜요청 알림 ---
+      // 알림 구독
       const alertBox = document.getElementById('alertBox');
       const alertWho = document.getElementById('alertWho');
       const bell     = document.getElementById('bell');
@@ -209,7 +203,6 @@ const firebaseConfig = {
       // 연결 테스트
       selftest.onclick = async ()=>{
         try {
-          const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
           await setDoc(doc(db,"healthcheck","reception"), { ping: Date.now() }, { merge:true });
           conn.textContent="연결 정상"; conn.className="pill ok"; hideErr();
         } catch(e){ conn.textContent="연결 오류"; conn.className="pill err"; showErr("연결 테스트 실패: "+e.message); }
