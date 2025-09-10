@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
-  <title>보호자 위치 (리셉션)</title>
+  <title>보호자 위치 (처치실·전체 카드)</title>
   <style>
     :root{
       --bg:#0b1220; --fg:#ffffff; --muted:#9ca3af; --card:#111827cc; --blur:8px;
@@ -30,7 +30,7 @@
     .btn{cursor:pointer;border:0;border-radius:12px;padding:10px 14px;font-weight:800;background:#1f2937;color:#fff;border:1px solid #374151}
     .btn.ghost{background:transparent}
 
-    /* 상태 배지 색상 */
+    /* 상태 버튼/배지 색상 */
     .bg-상담대기중{background:#dc2626;color:#fff}
     .bg-원내대기중{background:#f97316;color:#000}
     .bg-카페대기중{background:#f97316;color:#000}
@@ -46,7 +46,7 @@
 </head>
 <body>
   <div class="topbar">
-    <div class="brand">리셉션 화면</div>
+    <div class="brand">처치실 화면 · 전체 카드</div>
     <div>
       <span id="conn" class="pill warn">연결 확인 중…</span>
     </div>
@@ -54,13 +54,12 @@
 
   <div class="wrap">
     <div id="err" class="errbox"></div>
-    <div style="margin-bottom:16px">
-      <input id="patientName" placeholder="고양이 이름" style="padding:8px;border-radius:8px;border:1px solid #ccc"/>
-      <input id="guardianName" placeholder="보호자 이름" style="padding:8px;border-radius:8px;border:1px solid #ccc"/>
-      <button id="addCase" class="btn">환자 추가</button>
-    </div>
     <div id="grid" class="grid"></div>
   </div>
+
+  <audio id="ding" preload="auto">
+    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+  </audio>
 
   <script type="module">
     const errBox = document.getElementById('err');
@@ -69,9 +68,7 @@
 
     const grid = document.getElementById('grid');
     const conn = document.getElementById('conn');
-    const addBtn = document.getElementById('addCase');
-    const patientName = document.getElementById('patientName');
-    const guardianName = document.getElementById('guardianName');
+    const ding = document.getElementById('ding');
 
     function relTime(ts){
       if(!ts) return "";
@@ -98,7 +95,7 @@
 
     try{
       const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-      const { getFirestore, collection, addDoc, onSnapshot, query, orderBy, runTransaction, doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      const { getFirestore, collection, onSnapshot, query, orderBy, runTransaction, doc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
 
       const firebaseConfig = { apiKey:"AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4", authDomain:"bs-owner-monitor.firebaseapp.com", projectId:"bs-owner-monitor" };
       const app = initializeApp(firebaseConfig);
@@ -106,26 +103,12 @@
 
       conn.textContent = "연결됨"; conn.className = "pill ok";
 
-      addBtn.onclick = async ()=>{
-        const pn = patientName.value.trim();
-        const gn = guardianName.value.trim();
-        if(!pn && !gn){ showErr('이름을 입력하세요'); return; }
-        try{
-          await addDoc(collection(db,'cases'),{
-            patientName:pn, guardianName:gn,
-            location:'원내대기중', createdAt:Date.now(), updatedAt:Date.now(),
-            version:1, callRequested:false
-          });
-          patientName.value=''; guardianName.value='';
-        }catch(e){ showErr('추가 실패: '+e.message); }
-      };
-
-      let cache=[];
-      onSnapshot(query(collection(db,'cases'), orderBy('createdAt','desc')),(snap)=>{
+      let cache = [];
+      onSnapshot(query(collection(db,'cases'), orderBy('createdAt','desc')), (snap)=>{
         hideErr();
-        cache = snap.docs.map(d=>({id:d.id,...d.data()}));
+        cache = snap.docs.map(d=>({ id:d.id, ...d.data() }));
         render();
-      },(e)=>{ conn.textContent='연결 오류'; conn.className='pill err'; showErr('목록 구독 실패: '+e.message); });
+      }, (e)=>{ conn.textContent='연결 오류'; conn.className='pill err'; showErr('목록 구독 실패: '+e.message); });
 
       function displayName(d){
         return (d.patientName||d.guardianName)
@@ -134,36 +117,33 @@
       }
 
       function displayLocation(d){
-        return d.location||'';
+        return d.location || '';
       }
 
       function cardEl(d){
-        const el=document.createElement('div'); el.className='pcard';
-        if(d.callRequested) el.classList.add('calling');
+        const el = document.createElement('div'); el.className = 'pcard';
+        if (d.callRequested) el.classList.add('calling');
 
-        const header=document.createElement('div'); header.className='head';
-        const name=document.createElement('div'); name.className='name'; name.textContent=displayName(d);
-        const badge=document.createElement('span'); badge.className='badge '+stateClass(d.location||''); badge.textContent=displayLocation(d)||'상태없음';
+        const header = document.createElement('div'); header.className='head';
+        const name = document.createElement('div'); name.className='name'; name.textContent = displayName(d);
+        const badge = document.createElement('span'); badge.className='badge '+stateClass(d.location||''); badge.textContent = displayLocation(d) || '상태없음';
         header.appendChild(name); header.appendChild(badge);
 
-        const loc=document.createElement('div'); loc.className='loc'; loc.textContent=displayLocation(d);
-        const meta=document.createElement('div'); meta.className='meta'; meta.textContent=`업데이트: ${relTime(d.updatedAt||0)}${d.callRequested?' · 콜요청중':''}`;
+        const loc = document.createElement('div'); loc.className='loc'; loc.textContent = displayLocation(d);
+        const meta = document.createElement('div'); meta.className='meta'; meta.textContent = `업데이트: ${relTime(d.updatedAt||0)}${d.callRequested? ' · 콜요청중':''}`;
 
-        const actions=document.createElement('div'); actions.className='actions';
-        const btns=[
-          {label:'📣 콜 요청', action:()=>updateCase(d.id,{callRequested:true,callRequestedAt:Date.now()})},
-          {label:'요청 지우기', action:()=>updateCase(d.id,{callRequested:false})},
-          {label:'상담대기중', action:()=>updateCase(d.id,{location:'상담대기중',updatedAt:Date.now(),callRequested:false})},
-          {label:'원내대기중', action:()=>updateCase(d.id,{location:'원내대기중',updatedAt:Date.now(),callRequested:false})},
-          {label:'카페대기중', action:()=>updateCase(d.id,{location:'카페대기중',updatedAt:Date.now(),callRequested:false})},
-          {label:'외출중', action:()=>updateCase(d.id,{location:'외출중',updatedAt:Date.now(),callRequested:false})},
-          {label:'카페콜완료', action:()=>updateCase(d.id,{location:'카페콜완료',updatedAt:Date.now(),callRequested:false})},
-          {label:'외출콜완료', action:()=>updateCase(d.id,{location:'외출콜완료',updatedAt:Date.now(),callRequested:false})},
-          {label:'귀가', action:()=>updateCase(d.id,{location:'귀가',updatedAt:Date.now(),callRequested:false})},
-          {label:'수납후미귀가', action:()=>updateCase(d.id,{location:'수납후미귀가',updatedAt:Date.now(),callRequested:false})},
-          {label:'삭제', action:()=>deleteDoc(doc(db,'cases',d.id))}
-        ];
-        btns.forEach(b=>{const bt=document.createElement('button');bt.className='btn';bt.textContent=b.label;bt.onclick=b.action;actions.appendChild(bt);});
+        const actions = document.createElement('div'); actions.className='actions';
+        const callBtn = document.createElement('button'); callBtn.className='btn'; callBtn.textContent='📣 콜 요청';
+        const clearBtn= document.createElement('button'); clearBtn.className='btn ghost'; clearBtn.textContent='요청 지우기';
+        const cafeDone= document.createElement('button'); cafeDone.className='btn bg-카페콜완료'; cafeDone.textContent='카페콜완료';
+        const awayDone= document.createElement('button'); awayDone.className='btn bg-외출콜완료'; awayDone.textContent='외출콜완료';
+
+        callBtn.onclick = ()=> updateCase(d.id,{ callRequested:true, callRequestedAt: Date.now() });
+        clearBtn.onclick= ()=> updateCase(d.id,{ callRequested:false });
+        cafeDone.onclick = ()=> updateCase(d.id,{ location:'카페콜완료', updatedAt: Date.now(), callRequested:false });
+        awayDone.onclick = ()=> updateCase(d.id,{ location:'외출콜완료', updatedAt: Date.now(), callRequested:false });
+
+        actions.appendChild(callBtn); actions.appendChild(clearBtn); actions.appendChild(cafeDone); actions.appendChild(awayDone);
 
         el.appendChild(header);
         el.appendChild(loc);
@@ -174,23 +154,23 @@
 
       function render(){
         grid.innerHTML='';
-        cache.forEach(d=>grid.appendChild(cardEl(d)));
+        cache.forEach(d=> grid.appendChild(cardEl(d)) );
       }
 
-      async function updateCase(id,data){
+      async function updateCase(id, data){
         try{
-          await runTransaction(db,async(tx)=>{
-            const ref=doc(db,'cases',id);
-            const snap=await tx.get(ref);
-            const prev=snap.exists()?snap.data():{version:0};
-            tx.set(ref,{...data,version:(prev.version||0)+1},{merge:true});
+          await runTransaction(db, async (tx)=>{
+            const ref = doc(db,'cases', id);
+            const snap = await tx.get(ref);
+            const prev = snap.exists()? snap.data(): {version:0};
+            tx.set(ref, { ...data, version:(prev.version||0)+1 }, { merge:true });
           });
-        }catch(e){showErr('저장 실패: '+e.message);}
+        }catch(e){ showErr('저장 실패: '+e.message); }
       }
 
     }catch(e){
       showErr('Firebase 초기화 실패: '+(e.message||e));
-      if(conn){conn.textContent='초기화 오류';conn.className='pill err';}
+      if (conn){ conn.textContent='초기화 오류'; conn.className='pill err'; }
     }
   </script>
 </body>
