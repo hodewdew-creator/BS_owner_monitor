@@ -9,7 +9,6 @@
       --bg:#0b1220; --fg:#ffffff; --muted:#9ca3af;
       --card:#111827cc; --border:#1f2937; --blur:8px;
       --brand:#2b5fa3;
-      /* 상태 색 (리셉과 동일 매핑) */
       --s-red:#dc2626; --s-amber:#d97706; --s-sky:#0284c7; --s-green:#16a34a; --s-gray:#64748b;
     }
     html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto}
@@ -40,21 +39,21 @@
       border-radius:999px; padding:6px 10px; font-weight:900; font-size:12px; white-space:nowrap;
       border:1px solid #374151; background:#1f2937; color:#fff;
     }
-    /* 배지 색상 (텍스트만으로 상태 표시) */
     .b-상담대기중{background:var(--s-red); border-color:transparent}
     .b-원내대기중,.b-카페대기중{background:#ffd7a8; color:#111; border-color:transparent}
     .b-외출중{background:#38bdf8; color:#111; border-color:transparent}
     .b-카페콜완료,.b-외출콜완료{background:#22c55e; border-color:transparent}
     .b-귀가,.b-수납후미귀가{background:#e5e7eb; color:#111; border-color:transparent}
 
-    /* 기존 '하얀 큰 상태글씨' 영역은 제거하고, 메모만 조건부 표시 */
-    .memo{
-      display:none; font-size:13px; line-height:1.35; color:#e5e7eb;
-      border-left:3px solid #334155; padding-left:8px;
-    }
+    .memo{display:none; font-size:13px; line-height:1.35; color:#e5e7eb;
+      border-left:3px solid #334155; padding-left:8px;}
     .memo.show{display:block}
-
     .meta{font-size:12px; color:var(--muted)}
+
+    .actions{display:flex; gap:8px; flex-wrap:wrap}
+    .btn{cursor:pointer; border:0; border-radius:10px; padding:8px 12px; font-size:13px; font-weight:700;
+      background:#1f2937; color:#fff; border:1px solid #374151;}
+    .btn.ghost{background:transparent; color:#e5e7eb}
 
     .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700}
     .errbox.show{display:block}
@@ -81,27 +80,20 @@
   </audio>
 
   <script type="module">
-    const errBox = document.getElementById('err');
-    const grid = document.getElementById('grid');
-    const conn = document.getElementById('conn');
-    const ding = document.getElementById('ding');
+    const grid=document.getElementById('grid');
+    const conn=document.getElementById('conn');
+    const ding=document.getElementById('ding');
+    const errBox=document.getElementById('err');
+    const showErr=(m)=>{errBox.textContent=m;errBox.classList.add('show')};
+    const hideErr=()=>errBox.classList.remove('show');
+    const relTime=(ts)=>{if(!ts)return "";const s=Math.floor((Date.now()-ts)/1000);
+      if(s<60)return`${s}초 전`;const m=Math.floor(s/60);if(m<60)return`${m}분 전`;
+      const h=Math.floor(m/60);if(h<24)return`${h}시간 전`;const d=Math.floor(h/24);return`${d}일 전`};
 
-    const showErr = (m)=>{errBox.textContent=m;errBox.classList.add('show')};
-    const hideErr = ()=>errBox.classList.remove('show');
+    setInterval(()=>{document.querySelectorAll('[data-updated]').forEach(el=>{
+      const ts=Number(el.dataset.updated||0);el.textContent=ts?`업데이트: ${relTime(ts)}`:'';});},30_000);
 
-    const relTime=(ts)=>{ if(!ts)return "";
-      const s=Math.floor((Date.now()-ts)/1000);
-      if(s<60)return `${s}초 전`; const m=Math.floor(s/60); if(m<60)return `${m}분 전`;
-      const h=Math.floor(m/60); if(h<24)return `${h}시간 전`; const d=Math.floor(h/24); return `${d}일 전`;
-    };
-
-    // 30초마다 상대시간 텍스트 갱신
-    setInterval(()=>{ document.querySelectorAll('[data-updated]').forEach(el=>{
-      const ts=Number(el.dataset.updated||0); el.textContent = ts? `업데이트: ${relTime(ts)}` : '';
-    }); }, 30_000);
-
-    // 상태 → 배지 클래스
-    const badgeClass = (s)=>({
+    const badgeClass=(s)=>({
       '상담대기중':'b-상담대기중',
       '원내대기중':'b-원내대기중',
       '카페대기중':'b-카페대기중',
@@ -113,69 +105,88 @@
     }[s]||'');
 
     try{
-      const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-      const { getFirestore, collection, onSnapshot, query, orderBy } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      const { initializeApp }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+      const { getFirestore, collection, onSnapshot, query, orderBy, runTransaction, doc }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
 
-      // Reception과 동일 프로젝트 (기준 코드)
-      const firebaseConfig = { apiKey:"AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4", authDomain:"bs-owner-monitor.firebaseapp.com", projectId:"bs-owner-monitor" };
-      const app = initializeApp(firebaseConfig);
-      const db  = getFirestore(app);
+      const firebaseConfig={apiKey:"AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4",authDomain:"bs-owner-monitor.firebaseapp.com",projectId:"bs-owner-monitor"};
+      const app=initializeApp(firebaseConfig);const db=getFirestore(app);
+      conn.textContent="연결됨";conn.className="pill ok";
 
-      conn.textContent="연결됨"; conn.className="pill ok";
-
-      let lastCall = new Set(); // 새 콜요청 ding 1회 처리
-      onSnapshot(query(collection(db,"cases"), orderBy("createdAt","desc")), (snap)=>{
+      let lastCall=new Set();
+      onSnapshot(query(collection(db,"cases"),orderBy("createdAt","desc")),(snap)=>{
         hideErr();
-        const docs = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+        let docs=snap.docs.map(d=>({id:d.id,...d.data()}));
 
-        // 렌더
-        const frag = document.createDocumentFragment();
+        // 정렬: 상담대기중 제일 위, 귀가/수납후미귀가 제일 아래, 나머지는 createdAt desc
+        docs.sort((a,b)=>{
+          const order=(d)=>{
+            if(d.location==="상담대기중") return 0;
+            if(d.location==="귀가"||d.location==="수납후미귀가") return 2;
+            return 1;
+          };
+          const oa=order(a),ob=order(b);
+          if(oa!==ob) return oa-ob;
+          return (b.createdAt||0)-(a.createdAt||0);
+        });
+
+        const frag=document.createDocumentFragment();
         docs.forEach(d=>{
-          // 새 콜요청 사운드
-          if (d.callRequested && !lastCall.has(d.id)) {
-            try{ ding.currentTime=0; ding.play().catch(()=>{});}catch(e){}
+          if(d.callRequested&&!lastCall.has(d.id)){
+            try{ding.currentTime=0;ding.play().catch(()=>{});}catch(e){}
             lastCall.add(d.id);
           }
-          if (!d.callRequested) lastCall.delete(d.id);
+          if(!d.callRequested) lastCall.delete(d.id);
 
-          const card = document.createElement('div'); card.className='card';
-          if (d.callRequested) card.classList.add('call');
+          const card=document.createElement('div');card.className='card';
+          if(d.callRequested) card.classList.add('call');
 
-          // 헤더: 이름 + 상태배지(상태 텍스트는 배지로만 표시)
-          const head = document.createElement('div'); head.className='head';
-          const name = document.createElement('div'); name.className='name';
-          name.textContent = (d.patientName||d.guardianName)
-            ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName))
-            : d.id;
-          const badge = document.createElement('span'); badge.className = 'badge ' + badgeClass(d.location||'');
-          badge.textContent = d.location || '상태없음';
-          head.appendChild(name); head.appendChild(badge);
+          const head=document.createElement('div');head.className='head';
+          const name=document.createElement('div');name.className='name';
+          name.textContent=(d.patientName||d.guardianName)
+            ?(d.patientName&&d.guardianName?`${d.patientName}(${d.guardianName})`:(d.patientName||d.guardianName))
+            :d.id;
+          const badge=document.createElement('span');badge.className='badge '+badgeClass(d.location||'');
+          badge.textContent=d.location||'상태없음';
+          head.appendChild(name);head.appendChild(badge);
           card.appendChild(head);
 
-          // (상태 큰 흰 글씨 영역 제거) → 대신 메모가 있을 때만 표시
-          const memoTxt = (d.memo||"").trim();
-          if (memoTxt){
-            const memo = document.createElement('div'); memo.className='memo show';
-            memo.textContent = memoTxt.length>140? memoTxt.slice(0,137)+'…' : memoTxt;
+          const memoTxt=(d.memo||"").trim();
+          if(memoTxt){
+            const memo=document.createElement('div');memo.className='memo show';
+            memo.textContent=memoTxt.length>140?memoTxt.slice(0,137)+'…':memoTxt;
             card.appendChild(memo);
           }
 
-          // 메타 (상대시간)
-          const meta = document.createElement('div'); meta.className='meta';
-          meta.dataset.updated = d.updatedAt||0;
-          meta.textContent = d.updatedAt ? `업데이트: ${relTime(d.updatedAt)}` : '';
+          const meta=document.createElement('div');meta.className='meta';
+          meta.dataset.updated=d.updatedAt||0;
+          meta.textContent=d.updatedAt?`업데이트: ${relTime(d.updatedAt)}`:'';
           card.appendChild(meta);
+
+          const actions=document.createElement('div');actions.className='actions';
+          const callBtn=document.createElement('button');callBtn.className='btn';callBtn.textContent='📣 콜요청하기';
+          const cancelBtn=document.createElement('button');cancelBtn.className='btn ghost';cancelBtn.textContent='콜요청취소';
+          callBtn.onclick=()=>updateCase(d.id,{callRequested:true,callRequestedAt:Date.now()});
+          cancelBtn.onclick=()=>updateCase(d.id,{callRequested:false});
+          actions.appendChild(callBtn);actions.appendChild(cancelBtn);
+          card.appendChild(actions);
 
           frag.appendChild(card);
         });
+        grid.innerHTML='';grid.appendChild(frag);
+      },(e)=>{conn.textContent='연결 오류';conn.className='pill err';showErr('리스트 구독 실패: '+e.message);});
 
-        grid.innerHTML=''; grid.appendChild(frag);
-      }, (e)=>{ conn.textContent='연결 오류'; conn.className='pill err'; showErr('리스트 구독 실패: '+e.message); });
+      async function updateCase(id,data){
+        try{
+          await runTransaction(db,async(tx)=>{
+            const ref=doc(db,"cases",id);
+            const snap=await tx.get(ref);
+            const prev=snap.exists()?snap.data():{version:0};
+            tx.set(ref,{...data,updatedAt:Date.now(),version:(prev.version||0)+1},{merge:true});
+          });
+        }catch(e){showErr("저장 실패: "+e.message);}
+      }
 
-    }catch(e){
-      conn.textContent='초기화 오류'; conn.className='pill err';
-      showErr('Firebase 초기화 실패: '+(e.message||e));
-    }
+    }catch(e){conn.textContent='초기화 오류';conn.className='pill err';showErr('Firebase 초기화 실패: '+(e.message||e));}
   </script>
 </body>
 </html>
