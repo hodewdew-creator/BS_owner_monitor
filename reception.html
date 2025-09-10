@@ -8,16 +8,11 @@
     :root{
       --bg:#fafafa; --card:#ffffff; --border:#e5e7eb;
       --fg:#0f172a; --muted:#64748b;
-      --brand:#2b5fa3;                /* 로고 블루 */
-      --brand-ink:#102339;            /* 브랜드 대비 텍스트 */
-      --btn:#f1f5f9;                  /* 기본 버튼 배경 */
-      --btn-ink:#111827;              /* 기본 버튼 글자 */
-      --btn-hover:#e2e8f0;            /* 기본 버튼 호버 */
+      --brand:#2b5fa3; --brand-ink:#102339;
+      --btn:#f1f5f9; --btn-ink:#111827; --btn-hover:#e2e8f0;
       --pill:#1f2937;
     }
     html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto}
-
-    /* 상단 우측: 로그인/로그아웃 */
     .topbar{
       position:sticky; top:0; z-index:50;
       display:flex; justify-content:flex-end; align-items:center;
@@ -30,73 +25,43 @@
     .topbar .ok{background:var(--brand);color:#fff}
     .topbar .ok:hover{filter:brightness(.95)}
     .whoami{opacity:.7}
-
     main{padding:16px}
     h1{margin:6px 0 12px; display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:.2px}
     .logo{width:28px;height:28px;border-radius:6px;object-fit:cover}
-
-    .card{
-      background:var(--card); border:1px solid var(--border);
-      border-radius:12px; padding:12px; margin-bottom:12px;
-    }
+    .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px;}
     label{display:block; font-size:12px; color:var(--muted); margin:0 0 4px 2px}
-
-    /* 입력 줄: 한 줄 고정, 최소폭 축소(스크롤 없음) */
-    .inputs-wrap{
-      display:flex; gap:8px; align-items:flex-end; flex-wrap:nowrap;
-    }
-    .inputs-wrap input{
-      flex:1 1 80px; min-width:80px;
-      padding:8px 10px; border:1px solid #cbd5e1; border-radius:10px; font-size:15px; background:#fff;
-    }
-
-    /* 버튼 */
+    .inputs-wrap{display:flex; gap:8px; align-items:flex-end; flex-wrap:nowrap;}
+    .inputs-wrap input{flex:1 1 80px; min-width:80px; padding:8px 10px; border:1px solid #cbd5e1; border-radius:10px; font-size:15px; background:#fff;}
     .btn{cursor:pointer;border:1px solid #d1d5db;border-radius:10px;padding:12px 14px;font-weight:700;background:var(--btn);color:var(--btn-ink);white-space:nowrap;transition:.15s}
     .btn:hover{background:var(--btn-hover)}
     .btn.ok{border-color:transparent;background:var(--brand);color:#fff}
     .btn.ok:hover{filter:brightness(.95)}
     .btn.dark{border-color:#111827;background:#111827;color:#fff}
-
-    .small{font-size:12px;opacity:.75;margin-top:24px}  /* '환자 추가'와 안내문 사이 간격 3배 */
-
-    /* 상태 버튼 두 줄 고정 */
+    .small{font-size:12px;opacity:.75;margin-top:24px}
     .toolbar{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto}
     .toolbar + .toolbar{margin-top:8px}
     .toolbar button{white-space:nowrap}
-
-    /* 메모 영역 */
     .memo-wrap{display:flex; gap:8px; align-items:center; margin-top:16px}
-    .memo-wrap input{
-      flex:1 1 auto; min-width:120px;
-      padding:8px 10px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; font-size:14px;
-    }
-
-    /* 리스트 */
+    .memo-wrap input{flex:1 1 auto; min-width:120px; padding:8px 10px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; font-size:14px;}
     .list{display:grid;grid-template-columns:1fr;gap:6px;margin-top:8px}
-    .line{display:grid;grid-template-columns:1.4fr .8fr .6fr;gap:8px;align-items:center;
-          background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 10px}
+    .line{display:grid;grid-template-columns:1.4fr .8fr .6fr;gap:8px;align-items:center;background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 10px}
     .name{font-weight:800;text-align:left}
     .state{font-weight:900;text-align:center}
     .updated{font-size:12px;opacity:.7;text-align:right}
-    .line.select{outline:3px solid var(--brand); outline-offset:0}  /* 선택 테두리 = 브랜드 블루 */
+    .line.select{outline:3px solid var(--brand); outline-offset:0}
     .line.calling{outline:3px solid rgba(220,38,38,.6); animation:callblink 1.1s linear infinite}
     @keyframes callblink{0%,100%{outline-color:rgba(220,38,38,.2)}50%{outline-color:rgba(220,38,38,.8)}}
-
-    /* 하단 상태바 */
     .statusbar{position:fixed;bottom:8px;left:8px;right:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     .pill{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;background:var(--pill);color:#fff}
     .pill.ok{background:#16a34a}.pill.err{background:#dc2626}.pill.warn{background:#f59e0b}
-
-    .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700}
+    .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700;white-space:pre-wrap}
     .errbox.show{display:block}
-
     .alert{display:none;margin:10px 0;padding:14px 16px;border-radius:12px;border:2px solid #ef4444;background:#fef2f2;color:#991b1b;font-weight:900}
     .alert.show{display:block;animation:pop .5s}
     @keyframes pop{from{transform:scale(.98)}to{transform:scale(1)}}
   </style>
 </head>
 <body>
-  <!-- 상단 우측 로그인 영역 -->
   <div class="topbar" id="authBox">
     <span id="whoami" class="whoami"></span>
     <button id="loginBtn" class="ok">Google로 로그인</button>
@@ -111,13 +76,11 @@
 
     <div id="err" class="errbox"></div>
 
-    <!-- 콜요청 알림 -->
     <div id="alertBox" class="alert">📣 처치실에서 <span id="alertWho"></span> 콜 요청!
       <button id="ack" class="btn ok" style="margin-left:8px">처리완료</button>
     </div>
 
     <div id="panel" style="display:none">
-      <!-- 환자 입력 + 추가 (한 줄 고정) -->
       <div class="card">
         <div class="inputs-wrap">
           <div>
@@ -131,19 +94,16 @@
           <button id="addCase" class="btn ok">환자 추가</button>
         </div>
 
-        <!-- 상태 버튼: 두 줄 고정 -->
         <div class="small">선택 환자에 적용됩니다.</div>
         <div class="toolbar" id="row1"></div>
         <div class="toolbar" id="row2"></div>
 
-        <!-- 선택 환자 메모 입력 -->
         <div class="memo-wrap">
           <input id="memoInput" type="text" placeholder="간단한 메모를 입력하세요…" />
           <button id="memoSaveBtn" class="btn">메모 저장</button>
         </div>
       </div>
 
-      <!-- 환자 리스트 -->
       <div class="card">
         <div class="list">
           <div class="line" style="background:#f8fafc">
@@ -168,8 +128,12 @@
 
   <script type="module">
     const errBox = document.getElementById('err');
-    function showErr(msg){errBox.textContent=msg; errBox.classList.add('show');}
-    function hideErr(){errBox.classList.remove('show');}
+    const showErr = (msg)=>{ console.error(msg); errBox.textContent=String(msg); errBox.classList.add('show'); };
+    const hideErr = ()=> errBox.classList.remove('show');
+
+    window.addEventListener('error', e=> showErr('스크립트 에러: '+(e.message||'unknown')));
+    window.addEventListener('unhandledrejection', e=> showErr('Promise 에러: '+(e.reason?.message||e.reason||'unknown')));
+
     const relTime = (ts)=>{
       if(!ts) return "";
       const s = Math.floor((Date.now()-ts)/1000);
@@ -179,12 +143,10 @@
       const d = Math.floor(h/24); return `${d}일 전`;
     };
 
-    window.addEventListener('error', e=> showErr('스크립트 에러: '+(e.message||'unknown')));
-
     try {
       const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
       const { getFirestore, collection, addDoc, onSnapshot, doc, runTransaction, query, orderBy, setDoc, deleteDoc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-      const { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+      const { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
 
       const firebaseConfig = {
         apiKey: "AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4",
@@ -194,8 +156,15 @@
       const app = initializeApp(firebaseConfig);
       const db  = getFirestore(app);
       const auth = getAuth(app);
-      await setPersistence(auth, browserLocalPersistence);
+      await setPersistence(auth, browserLocalPersistence).catch(e=>showErr('Persistence 설정 실패: '+e.message));
       const provider = new GoogleAuthProvider();
+
+      // 리다이렉트 로그인 결과 처리 (팝업 폴백 시)
+      getRedirectResult(auth).then(res=>{
+        if (res?.user) {
+          console.log('Redirect 로그인 성공:', res.user.email);
+        }
+      }).catch(e=> showErr('리다이렉트 결과 오류: '+e.message));
 
       // 상단 로그인 버튼 동작
       const loginBtn = document.getElementById('loginBtn');
@@ -205,15 +174,31 @@
       const conn     = document.getElementById('conn');
       const selftest = document.getElementById('selftest');
 
-      loginBtn.onclick = async () => { try { await signInWithPopup(auth, provider); } catch(e){ showErr(e.message); } };
-      logoutBtn.onclick= async () => { await signOut(auth); };
+      async function doLogin(){
+        try {
+          await signInWithPopup(auth, provider);
+        } catch(e){
+          // 파일 스킴/미지원 환경/팝업 차단 등 → 리다이렉트 폴백
+          if (e?.code === 'auth/operation-not-supported-in-this-environment' || e?.message?.includes('popup') ) {
+            showErr('팝업 로그인 불가 → 리다이렉트 로그인으로 전환합니다.');
+            await signInWithRedirect(auth, provider);
+            return;
+          }
+          showErr('로그인 실패: '+(e.code||'')+' '+e.message);
+        }
+      }
+
+      loginBtn.onclick = doLogin;
+      logoutBtn.onclick= async () => { try{ await signOut(auth); }catch(e){ showErr('로그아웃 실패: '+e.message); } };
 
       onAuthStateChanged(auth, (user) => {
+        console.log('auth state:', !!user, user?.email);
         if (user) {
           whoami.textContent = user.email;
           panel.style.display = "";
           logoutBtn.style.display = "";
           loginBtn.style.display = "none";
+          hideErr();
         } else {
           whoami.textContent = "";
           panel.style.display = "none";
@@ -235,8 +220,7 @@
             patientName: pn, guardianName: gn,
             location:"원내대기중",
             createdAt: Date.now(), updatedAt: Date.now(),
-            version:1, callRequested:false,
-            memo:""
+            version:1, callRequested:false, memo:""
           });
           patientName.value = ""; guardianName.value = ""; hideErr();
         } catch(e){ showErr("환자 추가 실패: "+e.message); }
@@ -245,7 +229,6 @@
       // 상태 버튼: 두 줄 고정
       const row1 = document.getElementById('row1');
       const row2 = document.getElementById('row2');
-
       const ROW1 = ["상담대기중","원내대기중","카페대기중","외출중"];
       const ROW2 = ["카페콜완료","외출콜완료","귀가","수납후미귀가"]; // + 삭제(별도)
 
@@ -256,10 +239,8 @@
         b.onclick = onClick;
         return b;
       }
-
       ROW1.forEach(s=> row1.appendChild(makeBtn(s, ()=>applyGlobalState(s))));
       ROW2.forEach(s=> row2.appendChild(makeBtn(s, ()=>applyGlobalState(s))));
-      // 삭제 버튼(검은색)
       const delBtn = makeBtn("삭제", onDelete, "btn dark");
       row2.appendChild(delBtn);
 
@@ -276,4 +257,129 @@
       const caseList = document.getElementById('caseList');
 
       function prettyName(d, id){
-        ret
+        return (d.patientName||d.guardianName)
+          ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName))
+          : id;
+      }
+
+      function colorForState(s){
+        if (s==="상담대기중") return "#dc2626";
+        if (s==="원내대기중" || s==="카페대기중") return "#d97706";
+        if (s==="외출중") return "#0284c7";
+        if (s==="카페콜완료" || s==="외출콜완료") return "#16a34a";
+        if (s==="귀가" || s==="수납후미귀가") return "#64748b";
+        return "";
+      }
+
+      function renderLine(id, d){
+        const line = document.createElement('div'); line.className = 'line'; line.dataset.id = id;
+        const name = document.createElement('div'); name.className='name'; name.textContent = prettyName(d,id);
+        const state= document.createElement('div'); state.className='state'; state.textContent = d.location || '';
+        const color = colorForState(d.location||""); if (color) state.style.color = color;
+        const upd  = document.createElement('div'); upd.className='updated'; upd.textContent = d.updatedAt ? relTime(d.updatedAt) : '';
+        line.appendChild(name); line.appendChild(state); line.appendChild(upd);
+        line.onclick = ()=>{
+          selectedId = id;
+          [...caseList.children].forEach(el=> el.classList.remove('select'));
+          line.classList.add('select');
+          memoInput.value = d.memo || "";
+        };
+        if (d.callRequested) line.classList.add('calling');
+        return line;
+      }
+
+      async function updateCase(id, data){
+        try {
+          await runTransaction(db, async (tx)=>{
+            const ref = doc(db,"cases", id);
+            const snap = await tx.get(ref);
+            const prev = snap.exists()? snap.data(): {version:0};
+            tx.set(ref, { ...data, updatedAt: Date.now(), version:(prev.version||0)+1 }, { merge:true });
+          });
+          hideErr();
+        } catch(e){ showErr("저장 실패: "+e.message); }
+      }
+
+      async function applyGlobalState(state){
+        if (!selectedId) { showErr("먼저 환자 한 명을 리스트에서 클릭해 선택하세요."); return; }
+        if (state === "귀가") {
+          const yes = confirm("리스트에서 삭제할까요? (예: 문서를 삭제 / 아니오: 상태만 '귀가'로 표시)");
+          if (yes) { return onDelete(); }
+        }
+        await updateCase(selectedId, { location: state, callRequested:false });
+      }
+
+      async function onDelete(){
+        if (!selectedId) return showErr("먼저 환자 한 명을 선택하세요.");
+        const ok = confirm("정말 삭제하시겠습니까? (되돌릴 수 없습니다)");
+        if (!ok) return;
+        try {
+          await deleteDoc(doc(db,"cases", selectedId));
+          selectedId = null;
+          hideErr();
+          memoInput.value = "";
+        }catch(e){ showErr("삭제 실패: "+e.message); }
+      }
+
+      const alertBox = document.getElementById('alertBox');
+      const alertWho = document.getElementById('alertWho');
+      const bell     = document.getElementById('bell');
+      const ackBtn   = document.getElementById('ack');
+
+      onSnapshot(query(collection(db,"cases"), orderBy("createdAt","desc")), (snap)=>{
+        hideErr();
+        caseList.innerHTML = "";
+        let firstId = null;
+        let anyReq = null;
+        let selectedDocData = null;
+
+        snap.forEach(docu=>{
+          const d = docu.data();
+          const el = renderLine(docu.id, d);
+          caseList.appendChild(el);
+          if (!firstId) firstId = docu.id;
+          if (docu.id === selectedId) selectedDocData = d;
+          if (d.callRequested) anyReq = { id: docu.id, d };
+        });
+
+        if (!selectedId && firstId) {
+          selectedId = firstId;
+          const firstEl = caseList.querySelector('[data-id="'+firstId+'"]');
+          if (firstEl) firstEl.classList.add('select');
+          const firstData = snap.docs.find(x=>x.id===firstId)?.data();
+          memoInput.value = (firstData && firstData.memo) ? firstData.memo : "";
+        }
+
+        if (selectedId && selectedDocData) {
+          memoInput.value = selectedDocData.memo || "";
+        }
+
+        if (anyReq) {
+          const d = anyReq.d;
+          alertWho.textContent = prettyName(d, anyReq.id);
+          alertBox.classList.add('show');
+          try { bell.currentTime = 0; bell.play().catch(()=>{}); } catch(e){}
+          ackBtn.onclick = ()=> updateCase(anyReq.id, { callRequested:false, location:"카페콜완료" });
+        } else {
+          alertBox.classList.remove('show');
+        }
+
+        conn.textContent="연결됨"; conn.className="pill ok";
+      }, (e)=>{ conn.textContent="연결 오류"; conn.className="pill err"; showErr("리스트 구독 실패: "+e.message); });
+
+      const selftest = document.getElementById('selftest');
+      const conn     = document.getElementById('conn');
+      selftest.onclick = async ()=>{
+        try {
+          await setDoc(doc(db,"healthcheck","reception"), { ping: Date.now() }, { merge:true });
+          conn.textContent="연결 정상"; conn.className="pill ok"; hideErr();
+        } catch(e){ conn.textContent="연결 오류"; conn.className="pill err"; showErr("연결 테스트 실패: "+e.message); }
+      };
+
+    } catch(e) {
+      showErr("Firebase 초기화 실패: "+(e.message||e));
+      const conn = document.getElementById('conn'); if (conn){ conn.textContent="초기화 오류"; conn.className="pill err"; }
+    }
+  </script>
+</body>
+</html>
