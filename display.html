@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
-  <title>보호자 위치 (표시·MVP)</title>
+  <title>보호자 위치 (표시·로그인 보강)</title>
   <style>
     html,body{margin:0;height:100%;background:#0b1220;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto}
     .wrap{display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;padding:6vh 4vw;gap:2vh}
@@ -18,19 +18,26 @@
     .clear{background:#334155;color:#fff;font-size:4vw}
     .blink{animation:blink 0.9s ease-in-out 3}
     @keyframes blink{50%{transform:scale(1.03)}}
-    
-.statusbar{position:fixed;bottom:8px;left:8px;right:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.pill{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;background:#1f2937;color:#fff}
-.pill.ok{background:#16a34a}.pill.err{background:#dc2626}.pill.warn{background:#f59e0b}
-.errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700}
-.errbox.show{display:block}
-
+    .statusbar{position:fixed;bottom:8px;left:8px;right:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .pill{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;background:#1f2937;color:#fff}
+    .pill.ok{background:#16a34a}.pill.err{background:#dc2626}.pill.warn{background:#f59e0b}
+    .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700}
+    .errbox.show{display:block}
+    .authbar{display:flex;align-items:center;gap:10px}
+    .whoami{font-size:12px;opacity:.8}
+    .disabled{opacity:.5;pointer-events:none}
   </style>
 </head>
 <body>
   <div class="topbar">
     <div style="font-weight:900">표시 화면</div>
-    <select id="caseSelect" class="sel" title="환자 선택"></select>
+
+    <div class="authbar">
+      <button id="loginBtn" class="pill">Google 로그인</button>
+      <button id="logoutBtn" class="pill" style="display:none">로그아웃</button>
+      <span id="whoami" class="whoami"></span>
+      <select id="caseSelect" class="sel" title="환자 선택"></select>
+    </div>
   </div>
 
   <div class="wrap">
@@ -40,14 +47,13 @@
     <div class="meta" id="meta"></div>
 
     <div class="row">
-      <button id="callBtn" class="call">📣 콜 요청</button>
-      <button id="clearBtn" class="clear">요청 표시 지우기</button>
+      <button id="callBtn" class="call disabled" title="로그인 후 사용">📣 콜 요청</button>
+      <button id="clearBtn" class="clear disabled" title="로그인 후 사용">요청 표시 지우기</button>
     </div>
   </div>
 
   <div class="statusbar">
     <span id="conn" class="pill warn">연결 확인 중…</span>
-    <button id="selftest" class="pill">연결 테스트</button>
   </div>
 
   <audio id="ding" preload="auto">
@@ -61,19 +67,24 @@
 
     window.addEventListener('error', e=> showErr('스크립트 에러: '+(e.message||'unknown')));
 
-    let app, db;
     try {
+      // Firebase
       const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-      const { getFirestore, collection, doc, onSnapshot, query, orderBy, runTransaction, setDoc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      const { getFirestore, collection, doc, onSnapshot, query, orderBy, runTransaction, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      const { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
 
       const firebaseConfig = {
-  apiKey: "AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4",
-  authDomain: "bs-owner-monitor.firebaseapp.com",
-  projectId: "bs-owner-monitor"
-};
-      app = initializeApp(firebaseConfig);
-      db  = getFirestore(app);
+        apiKey: "AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4",
+        authDomain: "bs-owner-monitor.firebaseapp.com",
+        projectId: "bs-owner-monitor"
+      };
+      const app = initializeApp(firebaseConfig);
+      const db  = getFirestore(app);
+      const auth = getAuth(app);
+      await setPersistence(auth, browserLocalPersistence);
+      const provider = new GoogleAuthProvider();
 
+      // UI refs
       const whoEl   = document.getElementById('who');
       const whereEl = document.getElementById('where');
       const metaEl  = document.getElementById('meta');
@@ -82,7 +93,37 @@
       const clearBtn= document.getElementById('clearBtn');
       const caseSel = document.getElementById('caseSelect');
       const conn    = document.getElementById('conn');
-      const selftest= document.getElementById('selftest');
+      const whoami  = document.getElementById('whoami');
+      const loginBtn= document.getElementById('loginBtn');
+      const logoutBtn=document.getElementById('logoutBtn');
+
+      // Auth
+      function setWriteEnabled(enabled){
+        [callBtn, clearBtn].forEach(b=>{
+          b.classList.toggle('disabled', !enabled);
+          b.title = enabled ? '' : '로그인 후 사용';
+        });
+      }
+      setWriteEnabled(false);
+
+      loginBtn.onclick = async () => { try { await signInWithPopup(auth, provider); } catch(e){ showErr(e.message); } };
+      logoutBtn.onclick= async () => { await signOut(auth); };
+
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          whoami.textContent = user.email;
+          logoutBtn.style.display = "";
+          loginBtn.style.display  = "none";
+          // 허용 이메일만 쓰기 가능 (UI 차원 안내)
+          const allowed = ["bscat5653@gmail.com","moyadais@gmail.com"].includes(user.email||"");
+          setWriteEnabled(allowed);
+        } else {
+          whoami.textContent = "";
+          logoutBtn.style.display = "none";
+          loginBtn.style.display  = "";
+          setWriteEnabled(false);
+        }
+      });
 
       conn.textContent = "연결됨(초기)"; conn.className = "pill ok";
 
@@ -90,7 +131,7 @@
       let currentCaseId = null;
       let lastVersion = 0;
 
-      // 환자 목록
+      // 환자 목록 구독 (읽기는 누구나 가능)
       onSnapshot(query(collection(db,"cases"), orderBy("createdAt","desc")), (snap)=>{
         hideErr();
         const selVal = caseSel.value;
@@ -142,9 +183,9 @@
 
       async function updateCase(data){
         if (!currentCaseId) return showErr("환자를 먼저 선택하세요.");
-        const ref = doc(db,"cases", currentCaseId);
         try {
           await runTransaction(db, async (tx)=>{
+            const ref = doc(db,"cases", currentCaseId);
             const snap = await tx.get(ref);
             const prev = snap.exists()? snap.data(): {version:0};
             tx.set(ref, { ...data, version:(prev.version||0)+1 }, { merge:true });
@@ -157,15 +198,6 @@
       callBtn.onclick = ()=> updateCase({ callRequested:true, callRequestedAt: Date.now() });
       clearBtn.onclick= ()=> updateCase({ callRequested:false });
 
-      selftest.onclick = async ()=>{
-        try {
-          const ref = doc(db,"healthcheck","display");
-          await setDoc(ref, { ping: Date.now() }, { merge:true });
-          conn.textContent="연결 정상"; conn.className="pill ok";
-          hideErr();
-        } catch(e){ conn.textContent="연결 오류"; conn.className="pill err"; showErr("연결 테스트 실패: "+e.message); }
-      };
-
     } catch(e) {
       showErr("Firebase 초기화 실패: "+(e.message||e));
       const conn = document.getElementById('conn'); conn.textContent="초기화 오류"; conn.className="pill err";
@@ -173,3 +205,4 @@
   </script>
 </body>
 </html>
+
