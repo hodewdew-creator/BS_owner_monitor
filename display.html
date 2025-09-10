@@ -2,138 +2,126 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>보호자 위치 (리셉션·개선)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+  <title>보호자 위치 (처치실·전체카드 보기)</title>
   <style>
-    body{margin:0;padding:16px;font-family:system-ui,-apple-system,Segoe UI,Roboto;background:#fafafa}
-    h1{margin:0 0 12px}
-    .auth{display:flex;gap:8px;margin:8px 0 16px;align-items:center}
-    input[type=text]{flex:1;padding:12px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px;background:#fff}
-    .row{display:flex;gap:8px;margin:8px 0;align-items:flex-end;flex-wrap:wrap}
-    button{cursor:pointer;border:0;border-radius:10px;padding:12px 14px;font-weight:700;background:#e2e8f0}
-    .ok{background:#2563eb;color:#fff}
-    .small{font-size:12px;opacity:.75;margin-top:8px}
-    .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:12px}
-    label{font-size:12px;color:#475569;margin-left:2px}
+    :root{
+      --bg:#0b1220; --fg:#ffffff; --muted:#9ca3af; --card:#111827cc; --blur:8px;
+      --blue:#2563eb; --yellow:#f59e0b; --green:#16a34a; --purple:#8b5cf6; --gray:#6b7280; --red:#dc2626; --red-dim:#b91c1c;
+      --border:#1f2937; --panel:#0f172a;
+    }
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto}
+    .topbar{position:fixed;inset:0 0 auto 0;display:flex;gap:10px;align-items:center;justify-content:space-between;
+      padding:10px 12px;background:var(--card);backdrop-filter:blur(var(--blur));z-index:10;border-bottom:1px solid var(--border)}
+    .brand{font-weight:900}
+    .authbar{display:flex;gap:8px;align-items:center}
+    .pill{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;background:#1f2937;color:#fff;border:1px solid #374151}
+    .pill.ok{background:var(--green)} .pill.err{background:var(--red)} .pill.warn{background:var(--yellow);color:#111}
+    .btn{cursor:pointer;border:0;border-radius:12px;padding:10px 14px;font-weight:800;background:#1f2937;color:#fff;border:1px solid #374151}
+    .btn.ghost{background:transparent}
+    .btn.small{padding:6px 10px;font-weight:700}
+    .btn.disabled{opacity:.5;pointer-events:none}
 
-    /* 리스트 = 한 행씩 */
-    .list{display:grid;grid-template-columns:1fr;gap:6px;margin-top:8px}
-    .line{display:grid;grid-template-columns:1.4fr .8fr .8fr;gap:8px;align-items:center;
-          background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:8px 10px}
-    .name{font-weight:800;text-align:left}
-    .state{font-weight:900;text-align:center}
-    .updated{font-size:12px;opacity:.7;text-align:right}
-    .line.select{outline:3px solid #2563eb; outline-offset:0}
-    .line.calling{outline:3px solid rgba(220,38,38,.6); animation:callblink 1.1s linear infinite}
-    @keyframes callblink{0%,100%{outline-color:rgba(220,38,38,.2)}50%{outline-color:rgba(220,38,38,.8)}}
+    .wrap{min-height:100%;padding:64px 16px 20px}
+    .toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin:12px 0}
+    .search{display:flex;gap:8px;align-items:center}
+    .field{padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--panel);color:#fff}
 
-    /* 공용 상태 버튼 바 */
-    .toolbar{display:flex;gap:8px;flex-wrap:wrap}
-    .muted{opacity:.6}
-    .statusbar{position:fixed;bottom:8px;left:8px;right:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .pill{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;background:#1f2937;color:#fff}
-    .pill.ok{background:#16a34a}.pill.err{background:#dc2626}.pill.warn{background:#f59e0b}
-    .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700}
-    .errbox.show{display:block}
-    .whoami{font-size:12px;opacity:.7}
-
-    /* 팝업 글씨 크게 */
-    .alert{display:none;margin:10px 0;padding:18px 20px;border-radius:12px;border:2px solid #ef4444;background:#fef2f2;color:#991b1b;font-weight:900; font-size:20px}
-    .alert.show{display:block;animation:pop .5s}
-    @keyframes pop{from{transform:scale(.98)}to{transform:scale(1)}}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));gap:14px}
+    .pcard{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px}
+    .pcard.calling{outline:4px solid rgba(220,38,38,.6);outline-offset:-4px;animation:frame 1.2s linear infinite}
+    @keyframes frame{0%,100%{outline-color:rgba(220,38,38,.2)}50%{outline-color:rgba(220,38,38,.7)}}
+    .head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .name{font-weight:900;font-size:18px;word-break:keep-all}
+    .badge{border-radius:999px;padding:6px 10px;font-weight:900}
+    .loc{font-size:28px;font-weight:900;line-height:1.1;margin-top:2px;word-break:keep-all}
+    .meta{font-size:12px;opacity:.85}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .tiny{font-size:11px;opacity:.8}
   </style>
 </head>
 <body>
-  <h1>보호자 위치 업데이트</h1>
-
-  <div id="err" class="errbox"></div>
-
-  <!-- 로그인 -->
-  <div id="authBox" class="auth">
-    <button id="loginBtn" class="ok">Google로 로그인</button>
-    <button id="logoutBtn" style="display:none">로그아웃</button>
-    <span id="whoami" class="whoami"></span>
-  </div>
-
-  <!-- 콜요청 알림 (요청 스테이션 표시) -->
-  <div id="alertBox" class="alert">📣 처치실에서 <span id="alertWho"></span> 콜 요청 <span id="byStation" style="font-size:14px;opacity:.8"></span>!
-    <button id="ack" class="ok" style="margin-left:8px">처리완료</button>
-  </div>
-
-  <div id="panel" style="display:none">
-    <!-- 환자 입력 + 추가 -->
-    <div class="card">
-      <div class="row">
-        <div style="flex:1">
-          <label>고양이 이름</label>
-          <input id="patientName" type="text" placeholder="예: 공심이" />
-        </div>
-        <div style="flex:1">
-          <label>보호자 이름</label>
-          <input id="guardianName" type="text" placeholder="예: 김OO" />
-        </div>
-        <button id="addCase" class="ok">환자 추가</button>
-      </div>
-      <div class="small">* 표시에는 \"고양이이름(보호자)\"로 노출됩니다.</div>
-
-      <!-- 공용 상태 버튼 -->
-      <div style="margin-top:10px">
-        <div class="small muted">선택 환자에 적용됩니다.</div>
-        <div class="toolbar" id="globalStates"></div>
-      </div>
-    </div>
-
-    <!-- 환자 리스트 (한 행씩) -->
-    <div class="card">
-      <div class="row" style="justify-content:space-between;align-items:center">
-        <strong>환자 리스트</strong>
-        <span class="small muted">행을 클릭하면 선택됩니다.</span>
-      </div>
-      <div class="list">
-        <div class="line muted" style="background:#f8fafc">
-          <div class="name">이름</div>
-          <div class="state">상태</div>
-          <div class="updated">업데이트</div>
-        </div>
-        <div id="caseList" class="list"></div>
-      </div>
+  <div class="topbar">
+    <div class="brand">처치실 화면 · 전체 카드</div>
+    <div class="authbar">
+      <button id="fsBtn" class="pill">⛶ 풀스크린</button>
+      <button id="loginBtn" class="pill">Google 로그인</button>
+      <button id="logoutBtn" class="pill" style="display:none">로그아웃</button>
+      <span id="whoami" class="tiny"></span>
+      <span id="conn" class="pill warn">연결 확인 중…</span>
     </div>
   </div>
 
-  <div class="statusbar">
-    <span id="conn" class="pill warn">연결 확인 중…</span>
-    <button id="selftest" class="pill">연결 테스트</button>
+  <div class="wrap">
+    <div class="toolbar">
+      <div class="search">
+        <input id="q" class="field" placeholder="이름 검색 (고양이/보호자)" />
+        <select id="filter" class="field">
+          <option value="">전체 상태</option>
+          <option>원내대기중</option>
+          <option>상담대기중</option>
+          <option>카페대기중</option>
+          <option>카페콜완료</option>
+          <option>카페콜완료(오시는중)</option>
+          <option>외출</option>
+          <option>수납후미귀가</option>
+          <option>귀가</option>
+        </select>
+      </div>
+      <div class="tiny">* 버튼 작동은 로그인 후</div>
+    </div>
+
+    <div id="err" class="errbox"></div>
+    <div id="grid" class="grid"></div>
   </div>
 
-  <audio id="bell" preload="auto">
+  <audio id="ding" preload="auto">
     <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
   </audio>
 
   <script type="module">
     const errBox = document.getElementById('err');
+    const grid = document.getElementById('grid');
+    const q = document.getElementById('q');
+    const filter = document.getElementById('filter');
     function showErr(msg){errBox.textContent=msg; errBox.classList.add('show');}
     function hideErr(){errBox.classList.remove('show');}
-    const relTime = (ts)=>{
+
+    const fsBtn = document.getElementById('fsBtn');
+    fsBtn.onclick = () => {
+      const el = document.documentElement;
+      if (!document.fullscreenElement) el.requestFullscreen().catch(()=>{});
+      else document.exitFullscreen();
+    };
+
+    function relTime(ts){
       if(!ts) return "";
       const s = Math.floor((Date.now()-ts)/1000);
       if (s < 60) return `${s}초 전`;
       const m = Math.floor(s/60); if (m < 60) return `${m}분 전`;
       const h = Math.floor(m/60); if (h < 24) return `${h}시간 전`;
       const d = Math.floor(h/24); return `${d}일 전`;
-    };
+    }
+    function locColor(loc){
+      // 색상 규칙
+      if (loc === '상담대기중') return 'var(--red-dim)';
+      if (loc === '귀가' || loc === '수납후미귀가') return 'var(--gray)';
+      if (loc === '원내대기중') return 'var(--blue)';
+      if (loc === '카페콜완료' || loc === '카페콜완료(오시는중)') return 'var(--green)';
+      if (loc === '외출' || loc === '카페대기중') return 'var(--yellow)';
+      return '#111827';
+    }
 
     function getStationName(){
       const key = 'station_name';
       let v = localStorage.getItem(key);
-      if (!v){ v = prompt('이 컴퓨터 이름을 입력하세요 (예: 리셉1번, 리셉2번)') || ''; localStorage.setItem(key, v); }
+      if (!v){ v = prompt('이 컴퓨터 이름을 입력하세요 (예: 처치실1번, 리셉2번)') || ''; localStorage.setItem(key, v); }
       return v;
     }
 
-    window.addEventListener('error', e=> showErr('스크립트 에러: '+(e.message||'unknown')));
-
-    try {
+    try{
       const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-      const { getFirestore, collection, addDoc, onSnapshot, doc, runTransaction, query, orderBy, setDoc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      const { getFirestore, collection, onSnapshot, query, orderBy, runTransaction, doc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
       const { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
 
       const firebaseConfig = {
@@ -144,4 +132,133 @@
       const app = initializeApp(firebaseConfig);
       const db  = getFirestore(app);
       const auth = getAuth(app);
-      await setPersistence(auth, browserLocalPers
+      await setPersistence(auth, browserLocalPersistence);
+      const provider = new GoogleAuthProvider();
+
+      const loginBtn = document.getElementById('loginBtn');
+      const logoutBtn= document.getElementById('logoutBtn');
+      const whoami   = document.getElementById('whoami');
+      const conn     = document.getElementById('conn');
+      const ding     = document.getElementById('ding');
+
+      let canWrite = false;
+      function updateWriteAbility(user){
+        if (user && ["bscat5653@gmail.com","moyadais@gmail.com"].includes(user.email||"")) {
+          canWrite = true;
+          whoami.textContent = user.email;
+          loginBtn.style.display = 'none';
+          logoutBtn.style.display = '';
+        } else {
+          canWrite = false;
+          whoami.textContent = user? user.email : '';
+          loginBtn.style.display = '';
+          logoutBtn.style.display = 'none';
+        }
+        // 버튼 활성/비활성은 각 카드 렌더 시 반영
+      }
+
+      loginBtn.onclick = async ()=>{ try{ await signInWithPopup(auth, provider);}catch(e){ showErr(e.message);} };
+      logoutBtn.onclick= async ()=>{ await signOut(auth); };
+      onAuthStateChanged(auth, user=> updateWriteAbility(user));
+
+      conn.textContent = "연결됨"; conn.className = "pill ok";
+
+      let cache = [];
+      onSnapshot(query(collection(db,"cases"), orderBy("createdAt","desc")), (snap)=>{
+        hideErr();
+        cache = snap.docs.map(d=> ({ id:d.id, ...d.data() }));
+        render();
+      }, (e)=>{ conn.textContent="연결 오류"; conn.className="pill err"; showErr("목록 구독 실패: "+e.message); });
+
+      q.oninput = render; filter.onchange = render;
+
+      function render(){
+        const term = (q.value||"").trim().toLowerCase();
+        const f = (filter.value||"");
+        const list = cache.filter(d=>{
+          const name = `${d.patientName||''} ${d.guardianName||''}`.toLowerCase();
+          const okName = term? name.includes(term) : true;
+          const okLoc  = f? d.location===f : true;
+          return okName && okLoc;
+        });
+
+        grid.innerHTML = '';
+        list.forEach(d=> grid.appendChild(cardEl(d)) );
+      }
+
+      function displayLocation(d){
+        if (d.location === '카페콜완료(오시는중)' && typeof d.etaMinutes === 'number'){
+          return `카페콜완료(오시는중: ${d.etaMinutes}분)`;
+        }
+        return d.location || '';
+      }
+
+      function requestedByText(d){
+        return d.callRequestedBy ? ` (요청: ${d.callRequestedBy})` : '';
+        }
+
+      function cardEl(d){
+        const el = document.createElement('div'); el.className = 'pcard';
+        if (d.callRequested) el.classList.add('calling');
+
+        const header = document.createElement('div'); header.className='head';
+        const name = document.createElement('div'); name.className='name';
+        const display = (d.patientName||d.guardianName) ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName)) : d.id;
+        name.textContent = display;
+        const badge = document.createElement('span'); badge.className='badge';
+        badge.style.background = locColor(d.location||'');
+        badge.style.color = (d.location==="카페대기중")? '#111' : '#fff';
+        badge.textContent = displayLocation(d) || '상태없음';
+        header.appendChild(name); header.appendChild(badge);
+
+        const loc = document.createElement('div'); loc.className='loc'; loc.textContent = displayLocation(d);
+        const meta = document.createElement('div'); meta.className='meta';
+        meta.textContent = `업데이트: ${relTime(d.updatedAt||0)}${d.callRequested? ' · 콜요청중':''}${requestedByText(d)}`;
+
+        const actions = document.createElement('div'); actions.className='actions';
+        const callBtn = document.createElement('button'); callBtn.className='btn'; callBtn.textContent='📣 콜 요청';
+        const clearBtn= document.createElement('button'); clearBtn.className='btn ghost'; clearBtn.textContent='요청 표시 지우기';
+        const comingBtn= document.createElement('button'); comingBtn.className='btn ghost'; comingBtn.textContent='오시는중';
+
+        if (!canWrite){ [callBtn, clearBtn, comingBtn].forEach(b=>b.classList.add('disabled')); }
+
+        callBtn.onclick = ()=> updateCase(d.id,{ callRequested:true, callRequestedAt: Date.now(), callRequestedBy: getStationName() });
+        clearBtn.onclick= ()=> updateCase(d.id,{ callRequested:false });
+        comingBtn.onclick= ()=> {
+          const m = prompt('몇 분 후 도착 예정인가요? (숫자만)');
+          if (m===null) return;
+          const mins = Number(m);
+          if (!Number.isFinite(mins) || mins<0) { showErr('숫자를 입력하세요'); return; }
+          updateCase(d.id,{ location:'카페콜완료(오시는중)', etaMinutes: mins, callRequested:false });
+        };
+
+        actions.appendChild(callBtn); actions.appendChild(clearBtn); actions.appendChild(comingBtn);
+
+        el.appendChild(header);
+        el.appendChild(loc);
+        el.appendChild(meta);
+        el.appendChild(actions);
+
+        return el;
+      }
+
+      async function updateCase(id, data){
+        if (!canWrite) return showErr('로그인 후 사용하세요');
+        try{
+          await runTransaction(db, async (tx)=>{
+            const ref = doc(db,'cases', id);
+            const snap = await tx.get(ref);
+            const prev = snap.exists()? snap.data(): {version:0};
+            tx.set(ref, { ...data, updatedAt: Date.now(), version:(prev.version||0)+1 }, { merge:true });
+          });
+          hideErr();
+        }catch(e){ showErr('저장 실패: '+e.message); }
+      }
+
+    }catch(e){
+      showErr('Firebase 초기화 실패: '+(e.message||e));
+      const conn = document.getElementById('conn'); if (conn){ conn.textContent='초기화 오류'; conn.className='pill err'; }
+    }
+  </script>
+</body>
+</html>
