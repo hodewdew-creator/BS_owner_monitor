@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>보호자 위치 (리셉션·로그인 보강)</title>
+  <title>보호자 위치 (리셉션·개선)</title>
   <style>
     body{margin:0;padding:16px;font-family:system-ui,-apple-system,Segoe UI,Roboto;background:#fafafa}
     h1{margin:0 0 12px}
@@ -15,11 +15,20 @@
     .small{font-size:12px;opacity:.75;margin-top:8px}
     .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:12px}
     label{font-size:12px;color:#475569;margin-left:2px}
-    .list{display:grid;grid-template-columns:1fr auto;gap:6px;margin-top:8px}
-    .item{display:flex;align-items:center;gap:8px}
-    .alert{display:none;margin:10px 0;padding:14px 16px;border-radius:12px;border:2px solid #ef4444;background:#fef2f2;color:#991b1b;font-weight:900}
-    .alert.show{display:block;animation:pop .5s}
-    @keyframes pop{from{transform:scale(.98)}to{transform:scale(1)}}
+
+    /* 리스트 = 한 행씩 */
+    .list{display:grid;grid-template-columns:1fr;gap:6px;margin-top:8px}
+    .line{display:grid;grid-template-columns:1.4fr .8fr .6fr;gap:8px;align-items:center;
+          background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:8px 10px}
+    .name{font-weight:800;text-align:left}
+    .state{font-weight:900;text-align:center}
+    .updated{font-size:12px;opacity:.7;text-align:right}
+    .line.select{outline:3px solid #2563eb; outline-offset:0}
+    .line.calling{outline:3px solid rgba(220,38,38,.6); animation:callblink 1.1s linear infinite}
+    @keyframes callblink{0%,100%{outline-color:rgba(220,38,38,.2)}50%{outline-color:rgba(220,38,38,.8)}}
+
+    /* 공용 상태 버튼 바 */
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap}
     .muted{opacity:.6}
     .statusbar{position:fixed;bottom:8px;left:8px;right:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     .pill{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;background:#1f2937;color:#fff}
@@ -27,6 +36,10 @@
     .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700}
     .errbox.show{display:block}
     .whoami{font-size:12px;opacity:.7}
+
+    .alert{display:none;margin:10px 0;padding:14px 16px;border-radius:12px;border:2px solid #ef4444;background:#fef2f2;color:#991b1b;font-weight:900}
+    .alert.show{display:block;animation:pop .5s}
+    @keyframes pop{from{transform:scale(.98)}to{transform:scale(1)}}
   </style>
 </head>
 <body>
@@ -34,16 +47,20 @@
 
   <div id="err" class="errbox"></div>
 
-  <!-- 로그인 박스 -->
+  <!-- 로그인 -->
   <div id="authBox" class="auth">
     <button id="loginBtn" class="ok">Google로 로그인</button>
     <button id="logoutBtn" style="display:none">로그아웃</button>
     <span id="whoami" class="whoami"></span>
   </div>
 
-  <div id="alertBox" class="alert">📣 처치실에서 <span id="alertWho"></span> 콜 요청! <button id="ack" class="ok" style="margin-left:8px">처리완료</button></div>
+  <!-- 콜요청 알림 -->
+  <div id="alertBox" class="alert">📣 처치실에서 <span id="alertWho"></span> 콜 요청!
+    <button id="ack" class="ok" style="margin-left:8px">처리완료</button>
+  </div>
 
   <div id="panel" style="display:none">
+    <!-- 환자 입력 + 추가 -->
     <div class="card">
       <div class="row">
         <div style="flex:1">
@@ -57,12 +74,30 @@
         <button id="addCase" class="ok">환자 추가</button>
       </div>
       <div class="small">* 표시에는 "고양이이름(보호자)"로 노출됩니다.</div>
+
+      <!-- 공용 상태 버튼 (선택된 환자에 적용) -->
+      <div style="margin-top:10px">
+        <div class="small muted">선택된 환자에 적용됩니다.</div>
+        <div class="toolbar" id="globalStates">
+          <!-- JS에서 버튼 생성 -->
+        </div>
+      </div>
     </div>
 
+    <!-- 환자 리스트 (한 행씩, 개별 버튼 없음) -->
     <div class="card">
-      <div class="row"><strong>환자 리스트</strong></div>
-      <div id="caseList" class="list"></div>
-      <div class="small">* 이름 클릭 시 상태 버튼이 펼쳐집니다.</div>
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <strong>환자 리스트</strong>
+        <span class="small muted">행을 클릭하면 선택됩니다.</span>
+      </div>
+      <div class="list">
+        <div class="line muted" style="background:#f8fafc">
+          <div class="name">이름</div>
+          <div class="state">상태</div>
+          <div class="updated">업데이트</div>
+        </div>
+        <div id="caseList" class="list"></div>
+      </div>
     </div>
   </div>
 
@@ -79,12 +114,20 @@
     const errBox = document.getElementById('err');
     function showErr(msg){errBox.textContent=msg; errBox.classList.add('show');}
     function hideErr(){errBox.classList.remove('show');}
+    const relTime = (ts)=>{
+      if(!ts) return "";
+      const s = Math.floor((Date.now()-ts)/1000);
+      if (s < 60) return `${s}초 전`;
+      const m = Math.floor(s/60); if (m < 60) return `${m}분 전`;
+      const h = Math.floor(m/60); if (h < 24) return `${h}시간 전`;
+      const d = Math.floor(h/24); return `${d}일 전`;
+    };
 
     window.addEventListener('error', e=> showErr('스크립트 에러: '+(e.message||'unknown')));
 
     try {
       const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-      const { getFirestore, collection, addDoc, onSnapshot, doc, runTransaction, query, orderBy, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      const { getFirestore, collection, addDoc, onSnapshot, doc, runTransaction, query, orderBy, setDoc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
       const { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
 
       const firebaseConfig = {
@@ -113,7 +156,7 @@
       onAuthStateChanged(auth, (user) => {
         if (user) {
           whoami.textContent = user.email;
-          panel.style.display = "";     
+          panel.style.display = "";     // 로그인되면 패널 표시
           logoutBtn.style.display = "";
         } else {
           whoami.textContent = "";
@@ -131,35 +174,51 @@
         const gn = guardianName.value.trim();
         if (!pn && !gn) return showErr("이름을 입력하세요.");
         try {
-          await addDoc(collection(db,"cases"),{ patientName: pn, guardianName: gn, location:"원내대기중", createdAt: Date.now(), updatedAt: Date.now(), version:1, callRequested:false });
+          await addDoc(collection(db,"cases"),{
+            patientName: pn, guardianName: gn,
+            location:"원내대기중",
+            createdAt: Date.now(), updatedAt: Date.now(),
+            version:1, callRequested:false
+          });
           patientName.value = ""; guardianName.value = ""; hideErr();
         } catch(e){ showErr("환자 추가 실패: "+e.message); }
       };
 
-      // 리스트
+      // 공용 상태 버튼 구성
+      const globalStatesWrap = document.getElementById('globalStates');
+      const STATES = ["원내대기중","상담대기중","카페대기중","카페콜완료","외출","귀가","수납후미귀가"];
+      STATES.forEach(s=>{
+        const b = document.createElement('button');
+        b.textContent = s;
+        b.onclick = ()=> applyGlobalState(s);
+        globalStatesWrap.appendChild(b);
+      });
+
+      let selectedId = null; // 선택된 환자
       const caseList = document.getElementById('caseList');
-      function renderCaseItem(id, d){
-        const wrap = document.createElement('div'); wrap.className="item";
-        const title = document.createElement('button');
-        title.style.background="#fff"; title.style.border="1px solid #e2e8f0"; title.style.borderRadius="10px"; title.style.padding="8px 10px"; title.style.cursor="pointer";
-        const name = (d.patientName||d.guardianName) ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName)) : id;
-        title.textContent = `• ${name}  —  ${d.location}`;
 
-        const detail = document.createElement('div');
-        detail.style.display = "none"; detail.style.gridColumn="1 / -1"; detail.style.padding="6px 0 10px";
+      function renderLine(id, d){
+        const line = document.createElement('div'); line.className = 'line'; line.dataset.id = id;
 
-        const states = ["원내대기중","카페대기중","카페콜완료","외출","귀가"];
-        const row = document.createElement('div'); row.style.display="flex"; row.style.gap="6px"; row.style.flexWrap="wrap";
-        states.forEach(s=>{ const b=document.createElement('button'); b.textContent=s; b.onclick=()=> updateCase(id, {location:s}); row.appendChild(b); });
+        const display = (d.patientName||d.guardianName) ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName)) : id;
 
-        const call = document.createElement('button'); call.textContent="📣 콜요청 표시 지우기"; call.onclick = ()=> updateCase(id, { callRequested:false }); call.style.marginLeft="6px";
-        const del  = document.createElement('button'); del.textContent="표시 숨기기(귀가로)"; del.onclick = ()=> updateCase(id, { location:"귀가", callRequested:false }); del.style.marginLeft="6px";
+        const name = document.createElement('div'); name.className='name'; name.textContent = display;
+        const state= document.createElement('div'); state.className='state'; state.textContent = d.location || '';
+        const upd  = document.createElement('div'); upd.className='updated'; upd.textContent = d.updatedAt ? relTime(d.updatedAt) : '';
 
-        detail.appendChild(row); detail.appendChild(call); detail.appendChild(del);
-        title.onclick = ()=>{ detail.style.display = detail.style.display==="none" ? "" : "none"; };
+        line.appendChild(name); line.appendChild(state); line.appendChild(upd);
 
-        wrap.appendChild(title); wrap.appendChild(detail);
-        return wrap;
+        line.onclick = ()=>{
+          selectedId = id;
+          // 선택 표시
+          [...caseList.children].forEach(el=> el.classList.remove('select'));
+          line.classList.add('select');
+        };
+
+        // 콜요청 강조
+        if (d.callRequested) line.classList.add('calling');
+        // 초기 선택: 첫 행 자동
+        return line;
       }
 
       async function updateCase(id, data){
@@ -174,22 +233,49 @@
         } catch(e){ showErr("저장 실패: "+e.message); }
       }
 
-      onSnapshot(query(collection(db,"cases"), orderBy("createdAt","desc")), (snap)=>{
-        hideErr();
-        caseList.innerHTML = "";
-        snap.forEach(d=>{ caseList.appendChild(renderCaseItem(d.id, d.data())); });
-        conn.textContent="연결됨"; conn.className="pill ok";
-      }, (e)=>{ conn.textContent="연결 오류"; conn.className="pill err"; showErr("리스트 구독 실패: "+e.message); });
+      async function applyGlobalState(state){
+        if (!selectedId) { showErr("먼저 환자 한 명을 리스트에서 클릭해 선택하세요."); return; }
+        if (state === "귀가") {
+          const yes = confirm("리스트에서 삭제할까요? (예: 문서를 삭제 / 아니오: 상태만 '귀가'로 표시)");
+          if (yes) {
+            try { await deleteDoc(doc(db,"cases", selectedId)); hideErr(); selectedId = null; }
+            catch(e){ showErr("삭제 실패: "+e.message); }
+            return;
+          }
+        }
+        await updateCase(selectedId, { location: state, callRequested:false });
+      }
 
-      // 알림 구독
+      // 실시간 리스트 & 콜요청 알림 + 강조
       const alertBox = document.getElementById('alertBox');
       const alertWho = document.getElementById('alertWho');
       const bell     = document.getElementById('bell');
       const ackBtn   = document.getElementById('ack');
 
       onSnapshot(query(collection(db,"cases"), orderBy("createdAt","desc")), (snap)=>{
+        hideErr();
+        // 리스트 렌더
+        caseList.innerHTML = "";
+        let firstId = null;
         let anyReq = null;
-        snap.forEach(docu=>{ const d = docu.data(); if (d.callRequested) anyReq = { id: docu.id, d }; });
+
+        snap.forEach(docu=>{
+          const d = docu.data();
+          // 리스트에서 '귀가' 상태여도 남아있을 수 있는데, 삭제를 안 했다면 그대로 보여줌
+          const el = renderLine(docu.id, d);
+          caseList.appendChild(el);
+          if (!firstId) firstId = docu.id;
+          if (d.callRequested) anyReq = { id: docu.id, d };
+        });
+
+        // 최초 선택 자동
+        if (!selectedId && firstId) {
+          selectedId = firstId;
+          const firstEl = caseList.querySelector('[data-id="'+firstId+'"]');
+          if (firstEl) firstEl.classList.add('select');
+        }
+
+        // 콜요청 팝업 & 해당 행 강조는 클래스 처리로 이미 되어 있음
         if (anyReq) {
           const d = anyReq.d;
           const name = (d.patientName||d.guardianName) ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName)) : anyReq.id;
@@ -197,8 +283,13 @@
           alertBox.classList.add('show');
           try { bell.currentTime = 0; bell.play().catch(()=>{}); } catch(e){}
           ackBtn.onclick = ()=> updateCase(anyReq.id, { callRequested:false, location:"카페콜완료" });
-        } else { alertBox.classList.remove('show'); }
-      }, (e)=> showErr("알림 구독 실패: "+e.message));
+          // 행은 renderLine에서 callRequested면 .calling 적용
+        } else {
+          alertBox.classList.remove('show');
+        }
+
+        conn.textContent="연결됨"; conn.className="pill ok";
+      }, (e)=>{ conn.textContent="연결 오류"; conn.className="pill err"; showErr("리스트 구독 실패: "+e.message); });
 
       // 연결 테스트
       selftest.onclick = async ()=>{
