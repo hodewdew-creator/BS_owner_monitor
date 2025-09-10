@@ -12,6 +12,8 @@
     .row{display:flex;gap:8px;margin:8px 0;align-items:flex-end;flex-wrap:wrap}
     button{cursor:pointer;border:0;border-radius:10px;padding:12px 14px;font-weight:700;background:#e2e8f0}
     .ok{background:#2563eb;color:#fff}
+    .destructive{background:#ef4444;color:#fff}
+    .mutedbtn{background:#111827;color:#fff}
     .small{font-size:12px;opacity:.75;margin-top:8px}
     .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:12px}
     label{font-size:12px;color:#475569;margin-left:2px}
@@ -74,11 +76,15 @@
         <button id="addCase" class="ok">환자 추가</button>
       </div>
 
-      <!-- 공용 상태 버튼 (선택된 환자에 적용) -->
+      <!-- 공용 상태/관리 버튼 (선택된 환자에 적용) -->
       <div style="margin-top:10px">
-        <div class="small muted"> 선택 환자에 적용됩니다.</div>
+        <div class="small muted">선택 환자에 적용됩니다.</div>
         <div class="toolbar" id="globalStates">
           <!-- JS에서 버튼 생성 -->
+        </div>
+        <div class="toolbar" style="margin-top:8px">
+          <button id="renameBtn" class="mutedbtn">이름 변경</button>
+          <button id="deleteBtn" class="destructive">삭제</button>
         </div>
       </div>
     </div>
@@ -126,7 +132,7 @@
 
     try {
       const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-      const { getFirestore, collection, addDoc, onSnapshot, doc, runTransaction, query, orderBy, setDoc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      const { getFirestore, collection, addDoc, onSnapshot, doc, runTransaction, query, orderBy, setDoc, deleteDoc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
       const { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
 
       const firebaseConfig = {
@@ -183,9 +189,9 @@
         } catch(e){ showErr("환자 추가 실패: "+e.message); }
       };
 
-      // 공용 상태 버튼 구성
+      // 공용 상태 버튼 구성 (디스플레이 기준으로 통일)
       const globalStatesWrap = document.getElementById('globalStates');
-      const STATES = ["원내대기중","상담대기중","카페대기중","카페콜완료","외출","귀가","수납후미귀가"];
+      const STATES = ["상담대기중","원내대기중","카페대기중","외출중","카페콜완료","외출콜완료","귀가","수납후미귀가"];
       STATES.forEach(s=>{
         const b = document.createElement('button');
         b.textContent = s;
@@ -193,15 +199,23 @@
         globalStatesWrap.appendChild(b);
       });
 
+      // 관리 버튼
+      const renameBtn = document.getElementById('renameBtn');
+      const deleteBtn = document.getElementById('deleteBtn');
+
       let selectedId = null; // 선택된 환자
       const caseList = document.getElementById('caseList');
+
+      function prettyName(d, id){
+        return (d.patientName||d.guardianName)
+          ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName))
+          : id;
+      }
 
       function renderLine(id, d){
         const line = document.createElement('div'); line.className = 'line'; line.dataset.id = id;
 
-        const display = (d.patientName||d.guardianName) ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName)) : id;
-
-        const name = document.createElement('div'); name.className='name'; name.textContent = display;
+        const name = document.createElement('div'); name.className='name'; name.textContent = prettyName(d,id);
         const state= document.createElement('div'); state.className='state'; state.textContent = d.location || '';
         const upd  = document.createElement('div'); upd.className='updated'; upd.textContent = d.updatedAt ? relTime(d.updatedAt) : '';
 
@@ -216,7 +230,6 @@
 
         // 콜요청 강조
         if (d.callRequested) line.classList.add('calling');
-        // 초기 선택: 첫 행 자동
         return line;
       }
 
@@ -245,6 +258,38 @@
         await updateCase(selectedId, { location: state, callRequested:false });
       }
 
+      // 이름 변경
+      renameBtn.onclick = async ()=>{
+        if (!selectedId) return showErr("먼저 환자 한 명을 선택하세요.");
+        try{
+          const ref = doc(db,"cases", selectedId);
+          const snap = await getDoc(ref);
+          if (!snap.exists()){ return showErr("문서를 찾을 수 없습니다."); }
+          const cur = snap.data();
+          const newPatient  = prompt("고양이 이름을 입력하세요 (공백 입력 시 변경 안 함):", cur.patientName || "");
+          if (newPatient === null) return; // 취소
+          const newGuardian = prompt("보호자 이름을 입력하세요 (공백 입력 시 변경 안 함):", cur.guardianName || "");
+          if (newGuardian === null) return;
+          const data = {};
+          if (newPatient !== "" ) data.patientName  = newPatient.trim();
+          if (newGuardian !== "") data.guardianName = newGuardian.trim();
+          if (Object.keys(data).length===0) { hideErr(); return; }
+          await updateCase(selectedId, data);
+        }catch(e){ showErr("이름 변경 실패: "+e.message); }
+      };
+
+      // 삭제 버튼 (명시적 삭제)
+      deleteBtn.onclick = async ()=>{
+        if (!selectedId) return showErr("먼저 환자 한 명을 선택하세요.");
+        const ok = confirm("정말 삭제하시겠습니까? (되돌릴 수 없습니다)");
+        if (!ok) return;
+        try {
+          await deleteDoc(doc(db,"cases", selectedId));
+          selectedId = null;
+          hideErr();
+        }catch(e){ showErr("삭제 실패: "+e.message); }
+      };
+
       // 실시간 리스트 & 콜요청 알림 + 강조
       const alertBox = document.getElementById('alertBox');
       const alertWho = document.getElementById('alertWho');
@@ -260,7 +305,6 @@
 
         snap.forEach(docu=>{
           const d = docu.data();
-          // 리스트에서 '귀가' 상태여도 남아있을 수 있는데, 삭제를 안 했다면 그대로 보여줌
           const el = renderLine(docu.id, d);
           caseList.appendChild(el);
           if (!firstId) firstId = docu.id;
@@ -274,15 +318,13 @@
           if (firstEl) firstEl.classList.add('select');
         }
 
-        // 콜요청 팝업 & 해당 행 강조는 클래스 처리로 이미 되어 있음
+        // 콜요청 팝업
         if (anyReq) {
           const d = anyReq.d;
-          const name = (d.patientName||d.guardianName) ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName)) : anyReq.id;
-          alertWho.textContent = name;
+          alertWho.textContent = prettyName(d, anyReq.id);
           alertBox.classList.add('show');
           try { bell.currentTime = 0; bell.play().catch(()=>{}); } catch(e){}
           ackBtn.onclick = ()=> updateCase(anyReq.id, { callRequested:false, location:"카페콜완료" });
-          // 행은 renderLine에서 callRequested면 .calling 적용
         } else {
           alertBox.classList.remove('show');
         }
