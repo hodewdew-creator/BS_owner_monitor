@@ -335,14 +335,16 @@
         const state= document.createElement('div'); state.className='state'; state.textContent = d.location || '';
         const color = colorForState(d.location||""); if (color) state.style.color = color;
 
-        // 업데이트 시간 표시 + ts 보관 → 주기적 갱신에 사용
-        const upd  = document.createElement('div'); upd.className='updated';
-        if (d.updatedAt){
-          upd.dataset.ts = String(d.updatedAt);
-          upd.renderUpdatedTex = renderUpdatedText(d.updatedAt); // "5분 전(오전 10:30)"
-        } else {
-          upd.textContent = '';
-        }
+// 업데이트 시간 표시 + ts 보관 → 주기적 갱신에 사용
+const upd  = document.createElement('div'); 
+upd.className='updated';
+
+if (d.updatedAt){
+  upd.dataset.ts = String(d.updatedAt);
+  upd.textContent = renderUpdatedText(d.updatedAt);  // ✔ 오타 수정
+} else {
+  upd.textContent = '';
+}
 
         line.appendChild(name); line.appendChild(state); line.appendChild(upd);
         line.onclick = ()=>{
