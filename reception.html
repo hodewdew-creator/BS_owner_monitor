@@ -35,30 +35,27 @@
     .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px;}
     label{display:block; font-size:12px; color:var(--muted); margin:0 0 4px 2px}
 
-:root{
-  --action-col: 112px;     /* 버튼 열 폭(그대로 유지) */
-  --input-min: 10.5em;     /* ← 플레이스홀더 안전 최소폭 (권장) */
-}
-
-/* 입력줄: 2입력 + 버튼열 */
 .inputs-wrap{
   display:grid;
-  grid-template-columns: minmax(var(--input-min),1fr) minmax(var(--input-min),1fr) var(--action-col);
-  gap:10px;
+  grid-template-columns: 240px 240px 116px; /* 입력칸 2개 고정폭, 버튼 116px */
+  gap:12px;
   align-items:end;
-  min-width:0;
 }
+
 .inputs-wrap input{
-  min-width:0;
+  width:240px;
+  min-width:240px;
   padding:8px 10px;
   border:1px solid #cbd5e1;
   border-radius:10px;
   font-size:15px;
   background:#fff;
+  box-sizing:border-box;
 }
+
 #addCase{
   width:100%;
-  max-width:var(--action-col);
+  max-width:116px;   /* 메모 저장 버튼 폭에 맞춤 */
   white-space:nowrap;
   box-sizing:border-box;
 }
