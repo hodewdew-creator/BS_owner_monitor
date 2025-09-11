@@ -360,7 +360,20 @@
 
       function renderLine(id, d){
         const line = document.createElement('div'); line.className = 'line'; line.dataset.id = id;
-        const name = document.createElement('div'); name.className='name'; name.textContent = prettyName(d,id);
+        const name = document.createElement('div');
+name.className = 'name';
+
+// 이름은 그대로 출력
+name.textContent = prettyName(d, id);
+
+// 메모가 있으면 이모지 span 하나 따로 붙이기
+if (d.memo && d.memo.trim() !== "") {
+  const memoIcon = document.createElement('span');
+  memoIcon.textContent = "📝";
+  memoIcon.style.marginLeft = "4px";   // 이름과 이모지 사이 여백
+  name.appendChild(memoIcon);
+}
+
         const state= document.createElement('div'); state.className='state'; state.textContent = d.location || '';
         const color = colorForState(d.location||""); if (color) state.style.color = color;
 
