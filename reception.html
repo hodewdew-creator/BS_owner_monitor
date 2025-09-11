@@ -213,7 +213,7 @@
     };
 
     // 표시 문자열 조합
-    const renderUpdatedText = (ts)=> `${relTime(ts)} (<wbr>${formatKTime(ts)})`;
+    const renderUpdatedText = (ts)=> `${relTime(ts)} (${formatKTime(ts)})`;
 
     // 주기적 갱신 타이머(30초마다)
     let tickTimer = null;
