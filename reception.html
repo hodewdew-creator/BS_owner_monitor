@@ -213,7 +213,7 @@
     };
 
     // 표시 문자열 조합
-    const renderUpdatedText = (ts)=> `${relTime(ts)}\u200B(${formatKTime(ts)})`;
+    const renderUpdatedText = (ts)=> `${relTime(ts)}<br>(${formatKTime(ts)})`;
 
     // 주기적 갱신 타이머(30초마다)
     let tickTimer = null;
@@ -222,7 +222,7 @@
       tickTimer = setInterval(()=>{
         document.querySelectorAll('.updated[data-ts]').forEach(el=>{
           const ts = Number(el.dataset.ts);
-          if (ts) el.textContent = renderUpdatedText(ts);
+          if (ts) el.innerHTML = renderUpdatedText(ts);
         });
       }, 30_000);
     }
@@ -341,7 +341,8 @@ upd.className='updated';
 
 if (d.updatedAt){
   upd.dataset.ts = String(d.updatedAt);
-  upd.textContent = renderUpdatedText(d.updatedAt);  // ✔ 오타 수정
+  // 기존: upd.textContent = renderUpdatedText(d.updatedAt);  ← 텍스트라 <br>이 안먹음:contentReference[oaicite:0]{index=0}
+  upd.innerHTML = renderUpdatedText(d.updatedAt);              // ← HTML로 넣기
 } else {
   upd.textContent = '';
 }
