@@ -35,9 +35,37 @@
     .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px;}
     label{display:block; font-size:12px; color:var(--muted); margin:0 0 4px 2px}
 
-    /* 입력 줄: 스크롤 없이 한 줄 고정, 최소폭 축소 */
-    .inputs-wrap{display:flex; gap:8px; align-items:flex-end; flex-wrap:nowrap;}
-    .inputs-wrap input{flex:1 1 80px; min-width:80px; padding:8px 10px; border:1px solid #cbd5e1; border-radius:10px; font-size:15px; background:#fff;}
+.inputs-wrap{
+  display:grid;
+  grid-template-columns: minmax(140px,1fr) minmax(140px,1fr) auto; /* 기본: 2입력 + 버튼 */
+  gap:8px;
+  align-items:end;
+}
+
+.inputs-wrap input{
+  min-width:0;
+  padding:8px 10px;
+  border:1px solid #cbd5e1;
+  border-radius:10px;
+  font-size:15px;
+  background:#fff;
+}
+
+@media (max-width: 680px){
+  .inputs-wrap{
+    grid-template-columns: 1fr auto;
+  }
+}
+
+@media (max-width: 420px){
+  .inputs-wrap{
+    grid-template-columns: 1fr;
+  }
+  .inputs-wrap #addCase{
+    width:100%;
+    justify-self:stretch;
+  }
+}
 
     /* 버튼 */
     .btn{cursor:pointer;border:1px solid #d1d5db;border-radius:10px;padding:12px 14px;font-weight:700;background:var(--btn);color:var(--btn-ink);white-space:nowrap;transition:.15s}
