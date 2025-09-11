@@ -373,11 +373,12 @@ if (d.memo && d.memo.trim() !== "") {
   memoIcon.style.marginLeft = "8px";// 이름과 이모지 사이 여백
   memoIcon.style.fontSize = "12px";
   memoIcon.style.verticalAlign = "middle"; 
+ // 마우스를 올리면 메모 내용 툴팁으로 표시
+  memoIcon.title = d.memo.trim();
   name.appendChild(memoIcon);
 }
-
-        const state= document.createElement('div'); state.className='state'; state.textContent = d.location || '';
-        const color = colorForState(d.location||""); if (color) state.style.color = color;
+  const state= document.createElement('div'); state.className='state'; state.textContent = d.location || '';
+  const color = colorForState(d.location||""); if (color) state.style.color = color;
 
 // 업데이트 시간 표시 + ts 보관 → 주기적 갱신에 사용
 const upd  = document.createElement('div'); 
