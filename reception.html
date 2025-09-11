@@ -213,7 +213,12 @@
     };
 
     // 표시 문자열 조합
-    const renderUpdatedText = (ts)=> `${relTime(ts)} (${formatKTime(ts)})`;
+const renderUpdatedHTML = (ts)=>{
+  const rel = relTime(ts);
+  const abs = formatKTime(ts);
+  // 괄호 앞에서만 줄바꿈 가능
+  return `${rel}<wbr>(${abs})`;
+};
 
     // 주기적 갱신 타이머(30초마다)
     let tickTimer = null;
@@ -340,6 +345,7 @@
         if (d.updatedAt){
           upd.dataset.ts = String(d.updatedAt);
           upd.textContent = renderUpdatedText(d.updatedAt); // "5분 전(오전 10:30)"
+        
         } else {
           upd.textContent = '';
         }
