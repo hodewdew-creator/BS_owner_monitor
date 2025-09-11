@@ -35,21 +35,21 @@
     .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px;}
     label{display:block; font-size:12px; color:var(--muted); margin:0 0 4px 2px}
 
-/* 1) 버튼 공통 폭(메모 저장과 얼추 맞추기). 필요하면 숫자만 미세조정 */
 :root{
-  --action-col: 112px; /* 108~120px 사이에서 병원 UI에 맞게 조정 가능 */
+  --action-col: 112px;     /* 버튼 열 폭(그대로 유지) */
+  --input-min: 10.5em;     /* ← 플레이스홀더 안전 최소폭 (권장) */
 }
 
-/* 2) 입력줄: 2입력 + 버튼(항상 한 줄, 간격 유지) */
+/* 입력줄: 2입력 + 버튼열 */
 .inputs-wrap{
   display:grid;
-  grid-template-columns: minmax(60px,1fr) minmax(120px,1fr) var(--action-col);
-  gap:10px;              /* 상태 버튼 줄과 비슷한 여백 */
+  grid-template-columns: minmax(var(--input-min),1fr) minmax(var(--input-min),1fr) var(--action-col);
+  gap:10px;
   align-items:end;
-  min-width:0;           /* 그리드 자체도 축소 허용 */
+  min-width:0;
 }
 .inputs-wrap input{
-  min-width:0;           /* 진짜로 줄어들 수 있게 */
+  min-width:0;
   padding:8px 10px;
   border:1px solid #cbd5e1;
   border-radius:10px;
@@ -57,29 +57,10 @@
   background:#fff;
 }
 #addCase{
-  width:100%;            /* 3번째 칼럼(버튼 열)을 꽉 채움 */
+  width:100%;
   max-width:var(--action-col);
   white-space:nowrap;
   box-sizing:border-box;
-}
-
-/* 3) 아주 좁을 때: 버튼 열과 인풋 패딩/폰트 동시 축소 → 한 줄 유지 + 테두리 안 겹침 */
-@media (max-width: 420px){
-  .inputs-wrap{
-    grid-template-columns:
-      minmax(60px,1fr)       /* 입력1 최소 100px */
-      minmax(60px,1fr)       /* 입력2 최소 100px */
-      clamp(88px, 22vw, var(--action-col)); /* 버튼 열 살짝 더 줄이기 */
-    gap:10px;                 /* 간격 고정 */
-  }
-  .inputs-wrap input{
-    padding:6px 8px;
-    font-size:14px;
-  }
-  #addCase{
-    padding:6px 10px;
-    font-size:14px;
-  }
 }
 
 
