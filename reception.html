@@ -35,24 +35,29 @@
     .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px;}
     label{display:block; font-size:12px; color:var(--muted); margin:0 0 4px 2px}
 
-.inputs-wrap {
-  display: grid;
-  grid-template-columns: 1fr 1fr max-content; /* 두 입력칸 균등 + 버튼은 내용폭 */
-  gap: 12px;                /* 세 칸 사이 보기 좋은 간격 (8~12px 추천) */
-  align-items: end;
+/* 입력줄: 2입력 + 고정 버튼열(메모 버튼과 같은 열에 오도록) */
+.inputs-wrap{
+  display:grid;
+  /* 입력칸 2개는 남는 공간을 1:1, 버튼 칼럼은 고정폭 */
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr) 116px; /* ← 116px 값만 맞춰 쓰면 됨 */
+  gap:8px;                 /* 상태 버튼 줄과 동일 간격 */
+  align-items:end;
+  min-width:0;
 }
 
-.inputs-wrap input {
-  min-width: 0;             /* 칸이 좁아질 때 줄어들 수 있도록 */
-  padding: 8px 10px;
-  border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  font-size: 15px;
-  background: #fff;
+.inputs-wrap input{
+  min-width:0;
+  padding:8px 10px;
+  border:1px solid #cbd5e1;
+  border-radius:10px;
+  font-size:15px;
+  background:#fff;
 }
 
-#addCase {
-  white-space: nowrap;       /* 버튼 글자가 줄바꿈 안 되도록 */
+#addCase{
+  width:100%;              /* 그리드 3번째 칼럼(116px)을 꽉 채움 */
+  white-space:nowrap;
+  box-sizing:border-box;
 }
 
 
