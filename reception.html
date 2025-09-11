@@ -35,16 +35,18 @@
     .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px;}
     label{display:block; font-size:12px; color:var(--muted); margin:0 0 4px 2px}
 
-.inputs-wrap{
+
+    .inputs-wrap{
   display:grid;
-  grid-template-columns: 120px 120px 100px; /* 입력칸 2개 고정폭, 버튼 116px */
+  grid-template-columns: 120px 120px 100px;  /* ← 네가 정한 고정폭 그대로 */
   gap:12px;
   align-items:end;
 }
 
+/* input은 "자기 칼럼을 꽉 채우기"만! (고정폭은 그리드가 담당) */
 .inputs-wrap input{
-  width:240px;
-  min-width:240px;
+  width:100%;              /* ← 그리드 칼럼 너비만큼만 */
+  min-width:0;             /* ← 넘치지 않게 */
   padding:8px 10px;
   border:1px solid #cbd5e1;
   border-radius:10px;
@@ -53,13 +55,16 @@
   box-sizing:border-box;
 }
 
+/* 버튼도 그리드 3번째 칼럼을 그대로 채움 */
 #addCase{
-  width:100%;
-  max-width:116px;   /* 메모 저장 버튼 폭에 맞춤 */
+  width:100%;              /* ← 100px 칼럼을 가득 */
+  max-width:unset;         /* ← 칼럼보다 더 커지지 않게 */
   white-space:nowrap;
   box-sizing:border-box;
 }
 
+    
+    
 
 
 
