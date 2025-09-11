@@ -35,41 +35,24 @@
     .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px;}
     label{display:block; font-size:12px; color:var(--muted); margin:0 0 4px 2px}
 
-/* 입력줄: 항상 한 줄 유지 (2입력 + 버튼) */
-.inputs-wrap{
-  display:grid;
-  grid-template-columns: minmax(0,1fr) minmax(0,1fr) max-content; /* ← 버튼은 글자폭, 나머지는 남는 공간 */
-  gap:8px;
-  align-items:end;
-  min-width:0;             /* 그리드 자체도 축소 허용 */
+.inputs-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr max-content; /* 두 입력칸 균등 + 버튼은 내용폭 */
+  gap: 12px;                /* 세 칸 사이 보기 좋은 간격 (8~12px 추천) */
+  align-items: end;
 }
 
-/* input이 진짜로 줄어들 수 있게 최소폭 0으로 */
-.inputs-wrap input{
-  min-width:0;             /* ← 가장 중요! (없으면 줄이 못 줄어듦) */
-  padding:8px 10px;
-  border:1px solid #cbd5e1;
-  border-radius:10px;
-  font-size:15px;
-  background:#fff;
+.inputs-wrap input {
+  min-width: 0;             /* 칸이 좁아질 때 줄어들 수 있도록 */
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 15px;
+  background: #fff;
 }
 
-/* 버튼은 내용폭만 차지하고 줄바꿈 금지 */
-#addCase{
-  white-space:nowrap;
-}
-
-/* 매우 좁을 때도 한 줄 유지하도록 여백/폰트 살짝 압축 */
-@media (max-width: 420px){
-  .inputs-wrap{ gap:6px; }
-  .inputs-wrap input{ padding:6px 8px; font-size:14px; }
-  #addCase{ padding:6px 10px; font-size:14px; }
-}
-
-@media (max-width: 340px){
-  .inputs-wrap{ gap:4px; }
-  .inputs-wrap input{ padding:5px 7px; font-size:13px; }
-  #addCase{ padding:5px 8px; font-size:13px; }
+#addCase {
+  white-space: nowrap;       /* 버튼 글자가 줄바꿈 안 되도록 */
 }
 
 
