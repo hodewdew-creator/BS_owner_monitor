@@ -37,7 +37,7 @@
 
 .inputs-wrap{
   display:grid;
-  grid-template-columns: minmax(140px,1fr) minmax(140px,1fr) auto; /* 기본: 2입력 + 버튼 */
+  grid-template-columns: 1fr 1fr max-content; /* 입력 2칸은 유연, 버튼은 내용폭만 */
   gap:8px;
   align-items:end;
 }
@@ -51,21 +51,27 @@
   background:#fff;
 }
 
-@media (max-width: 680px){
+/* 버튼이 줄바꿈되며 커지지 않게 */
+#addCase{ white-space:nowrap; }
+
+/* 정말 좁아졌을 때만 2열로 (기준 ↓ 축소) */
+@media (max-width: 560px){
   .inputs-wrap{
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr max-content; /* 입력+버튼 한 줄 */
   }
 }
 
-@media (max-width: 420px){
+/* 아주 좁으면 세로 스택 */
+@media (max-width: 380px){
   .inputs-wrap{
     grid-template-columns: 1fr;
   }
-  .inputs-wrap #addCase{
+  #addCase{
     width:100%;
     justify-self:stretch;
   }
 }
+
 
     /* 버튼 */
     .btn{cursor:pointer;border:1px solid #d1d5db;border-radius:10px;padding:12px 14px;font-weight:700;background:var(--btn);color:var(--btn-ink);white-space:nowrap;transition:.15s}
