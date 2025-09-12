@@ -44,8 +44,8 @@
       border:1px solid #374151; background:#1f2937; color:#fff;
     }
     .b-상담대기중{background:var(--s-red); border-color:transparent}
-    .b-원내대기중,.b-카페대기중{background:#ffd7a8; color:#111; border-color:transparent}
-    .b-외출중{background:#C084FC; color:#111; border-color:transparent}
+    .b-원내,.b-카페{background:#ffd7a8; color:#111; border-color:transparent}
+    .b-외출{background:#C084FC; color:#111; border-color:transparent}
     .b-카페콜완료,.b-외출콜완료{background:#22c55e; border-color:transparent}
     .b-귀가,.b-수납후미귀가{background:#e5e7eb; color:#111; border-color:transparent}
 
@@ -137,9 +137,9 @@
 
     const badgeClass=(s)=>({
       '상담대기중':'b-상담대기중',
-      '원내대기중':'b-원내대기중',
-      '카페대기중':'b-카페대기중',
-      '외출중':'b-외출중',
+      '원내':'b-원내',
+      '카페':'b-카페',
+      '외출':'b-외출',
       '카페콜완료':'b-카페콜완료',
       '외출콜완료':'b-외출콜완료',
       '귀가':'b-귀가',
