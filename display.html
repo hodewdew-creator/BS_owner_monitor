@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
-  <title>BS 대기실 모니터 (내부용) </title>
+  <title>BS 대기실 모니터 (내부용)</title>
   <style>
     :root{
       --bg:#0b1220; --fg:#ffffff; --muted:#9ca3af;
       --card:#111827cc; --border:#1f2937; --blur:8px;
-      --brand:#2b5fa3;
+      --brand:#2b5fa3; /* 백산 블루 */
       --s-red:#dc2626; --s-amber:#d97706; --s-sky:#0284c7; --s-green:#16a34a; --s-gray:#64748b;
     }
     html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto}
@@ -42,34 +42,24 @@
       border-radius:16px; padding:12px;
       display:flex; flex-direction:column; gap:10px;
     }
-    .title{
-      display:flex; align-items:flex-start; justify-content:space-between; gap:10px
-    }
-    .name{
-      font-size:22px; font-weight:900; letter-spacing:-.3px
-    }
+    .title{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px }
+    .name{ font-size:22px; font-weight:900; letter-spacing:-.3px }
     .meta{display:flex; flex-wrap:wrap; gap:8px}
 
-    .row{display:flex; align-items:center; justify-content:space-between; gap:10px}
-    .row .left{display:flex; align-items:center; gap:8px}
-    .row .right{display:flex; align-items:center; gap:8px}
-
-    /* 상태 배지 공통 */
-    .b{border:1px solid #374151; background:#1f2937; color:#fff;}
-    .b-상담대기중{background:var(--s-red); border-color:transparent}
+    /* 상태 배지 */
+    .b-상담대기중{background:var(--s-red); border-color:transparent; color:#fff}
     .b-원내대기중,.b-카페대기중{background:#ffd7a8; color:#111; border-color:transparent}
     .b-외출중{background:#38bdf8; color:#111; border-color:transparent}
-    .b-카페콜완료,.b-외출콜완료{background:#22c55e; border-color:transparent}
+    .b-카페콜완료,.b-외출콜완료{background:#22c55e; border-color:transparent; color:#fff}
     .b-귀가,.b-수납후미귀가{background:#e5e7eb; color:#111; border-color:transparent}
 
-    /* 진료실 배지 (1~4) */
+    /* 진료실 배지 (1~4) — 백산 블루 */
     .b-1진료실,.b-2진료실,.b-3진료실,.b-4진료실{
       background:var(--brand);
       color:#fff;
       border-color:transparent;
     }
 
-    /* ▼ 메모: 텍스트 길이만큼만 박스 */
     .memo{
       display:none;
       font-size:14px; line-height:1.25; font-weight:800;
@@ -82,12 +72,8 @@
       display:none; position:fixed; inset:auto 12px 12px 12px; z-index:50;
       padding:10px 12px; border-radius:12px; background:#f87171; color:#111; font-weight:800; border:1px solid #7f1d1d;
     }
-    .hint{font-size:12px; color:var(--muted)}
-    .bullet{display:inline-block; width:6px; height:6px; border-radius:999px; background:var(--muted)}
-    .sep{opacity:.5}
-
     .muted{color:var(--muted)}
-    .f12{font-size:12px} .f13{font-size:13px} .f14{font-size:14px} .f15{font-size:15px}
+    .f12{font-size:12px} .f13{font-size:13px}
   </style>
 </head>
 <body>
@@ -108,33 +94,98 @@
     const errBox=document.getElementById('err');
     const showErr=(msg)=>{ errBox.textContent=msg; errBox.style.display='block'; }
     const hideErr=()=>{ errBox.style.display='none'; }
-
     const elList=document.getElementById('list');
 
-    const badgeClass=(s)=>({
-      '상담대기중':'b-상담대기중',
-      '원내대기중':'b-원내대기중',
-      '카페대기중':'b-카페대기중',
-      '외출중':'b-외출중',
-      '카페콜완료':'b-카페콜완료',
-      '외출콜완료':'b-외출콜완료',
-      '귀가':'b-귀가',
-      '수납후미귀가':'b-수납후미귀가',
-      '1 진료실':'b-1진료실',
-      '2 진료실':'b-2진료실',
-      '3 진료실':'b-3진료실',
-      '4 진료실':'b-4진료실'
-    }[s]||'');
+    // 공백 유무 모두 커버: "1 진료실" / "1진료실"
+    const isClinic = (s)=> (/^[1-4]\s?진료실$/).test((s||'').trim());
 
-    let auth, provider, db;
-
-    // ding 트리거 관리
-    let lastCall=new Set();           // callRequested 알림(기존)
-    const prevState=new Map();        // id -> 직전 location
-    const prevHasMemo=new Map();      // id -> 직전 memo 유무(boolean)
-    let inited=false;                 // 첫 스냅샷에는 소리 안 울림
+    const badgeClass=(s)=>{
+      const map={
+        '상담대기중':'b-상담대기중',
+        '원내대기중':'b-원내대기중',
+        '카페대기중':'b-카페대기중',
+        '외출중':'b-외출중',
+        '카페콜완료':'b-카페콜완료',
+        '외출콜완료':'b-외출콜완료',
+        '귀가':'b-귀가',
+        '수납후미귀가':'b-수납후미귀가',
+        // 공백 있는/없는 표기 모두
+        '1 진료실':'b-1진료실','2 진료실':'b-2진료실','3 진료실':'b-3진료실','4 진료실':'b-4진료실',
+        '1진료실':'b-1진료실','2진료실':'b-2진료실','3진료실':'b-3진료실','4진료실':'b-4진료실',
+      };
+      return map[s] || (isClinic(s) ? `b-${s.replace(' ','')}` : '');
+    };
 
     try{
       const { initializeApp }=await import("https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js");
-      const { getAuth, GoogleAuthProvider, signInWithPopup }=await import("https://www.gstatic.com/firebasejs
+      const { getAuth, GoogleAuthProvider }=await import("https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js");
+      const { getFirestore, collection, query, orderBy, onSnapshot }=await import("https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js");
+
+      const app = initializeApp({
+        apiKey: "AIzaSyDUMMYxxxx",
+        authDomain: "bs-owner-monitor.firebaseapp.com",
+        projectId: "bs-owner-monitor",
+      });
+      // ★ 인증 자동 팝업 제거 (기존 세션만 사용)
+      const auth=getAuth(app); const provider=new GoogleAuthProvider(); // provider는 보존만
+
+      const db=getFirestore(app);
+
+      // 실시간 구독
+      onSnapshot(query(collection(db,"cases"),orderBy("createdAt","desc")),(snap)=>{
+        hideErr();
+        let docs=snap.docs.map(d=>({id:d.id,...d.data()}));
+
+        // 정렬: 상담대기중(0) → 진료실(1) → 기타(2) → 귀가/수납후미귀가(3)
+        docs.sort((a,b)=>{
+          const rank=(d)=>{
+            const s=d.location||'';
+            if(s==="상담대기중") return 0;
+            if(isClinic(s)) return 1;
+            if(s==="귀가"||s==="수납후미귀가") return 3;
+            return 2;
+          };
+          const ra=rank(a), rb=rank(b);
+          if(ra!==rb) return ra-rb;
+          return (b.createdAt||0)-(a.createdAt||0);
+        });
+
+        const frag=document.createDocumentFragment();
+        docs.forEach(d=>{
+          const card=document.createElement('div'); card.className='card';
+
+          const title=document.createElement('div'); title.className='title';
+          const name=document.createElement('div'); name.className='name'; name.textContent=d.petName||'(이름 없음)';
+          const meta=document.createElement('div'); meta.className='meta';
+
+          const state=document.createElement('span');
+          state.className=`badge ${badgeClass(d.location||'')}`;
+          state.textContent=d.location||'-';
+          meta.appendChild(state);
+
+          title.appendChild(name); title.appendChild(meta);
+
+          // 메모
+          if(d.memo){
+            const memo=document.createElement('div'); memo.className='memo';
+            memo.textContent=d.memo; memo.style.display='inline-block';
+            card.appendChild(title); card.appendChild(memo);
+          }else{
+            card.appendChild(title);
+          }
+
+          frag.appendChild(card);
+        });
+
+        elList.innerHTML='';
+        elList.appendChild(frag);
+      }, (e)=> showErr("실시간 구독 오류: "+e.message));
+
+    }catch(e){
+      showErr("초기화 오류: "+e.message);
+    }
+  </script>
+</body>
+</html>
+
 
