@@ -35,38 +35,28 @@
     .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px;}
     label{display:block; font-size:12px; color:var(--muted); margin:0 0 4px 2px}
 
-
     .inputs-wrap{
-  display:grid;
-  grid-template-columns: 120px 120px 100px;  /* ← 네가 정한 고정폭 그대로 */
-  gap:12px;
-  align-items:end;
-}
-
-/* input은 "자기 칼럼을 꽉 채우기"만! (고정폭은 그리드가 담당) */
-.inputs-wrap input{
-  width:100%;              /* ← 그리드 칼럼 너비만큼만 */
-  min-width:0;             /* ← 넘치지 않게 */
-  padding:8px 10px;
-  border:1px solid #cbd5e1;
-  border-radius:10px;
-  font-size:15px;
-  background:#fff;
-  box-sizing:border-box;
-}
-
-/* 버튼도 그리드 3번째 칼럼을 그대로 채움 */
-#addCase{
-  width:100%;              /* ← 100px 칼럼을 가득 */
-  max-width:unset;         /* ← 칼럼보다 더 커지지 않게 */
-  white-space:nowrap;
-  box-sizing:border-box;
-}
-
-    
-    
-
-
+      display:grid;
+      grid-template-columns: 120px 120px 100px;
+      gap:12px;
+      align-items:end;
+    }
+    .inputs-wrap input{
+      width:100%;
+      min-width:0;
+      padding:8px 10px;
+      border:1px solid #cbd5e1;
+      border-radius:10px;
+      font-size:15px;
+      background:#fff;
+      box-sizing:border-box;
+    }
+    #addCase{
+      width:100%;
+      max-width:unset;
+      white-space:nowrap;
+      box-sizing:border-box;
+    }
 
     /* 버튼 */
     .btn{cursor:pointer;border:1px solid #d1d5db;border-radius:10px;padding:12px 14px;font-weight:700;background:var(--btn);color:var(--btn-ink);white-space:nowrap;transition:.15s}
@@ -77,7 +67,7 @@
 
     .small{font-size:12px;opacity:.75;margin-top:24px}
 
-    /* 상태 버튼 두 줄 고정 */
+    /* 상태 버튼: 두 줄 고정 */
     .toolbar{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto}
     .toolbar + .toolbar{margin-top:8px}
     .toolbar button{white-space:nowrap}
@@ -316,23 +306,36 @@
         } catch(e){ showErr("환자 추가 실패: "+e.message); }
       };
 
-      // 상태 버튼: 두 줄 고정
+      // 상태 버튼: 재정리 (요청안 반영)
       const row1 = document.getElementById('row1');
       const row2 = document.getElementById('row2');
       const row3 = document.getElementById('row3');
-      const ROW1 = ["상담대기중","원내대기중","카페대기중","외출중"];
+
+      const ROW1 = ["상담대기중","면회대기중","원내대기중","카페대기중","외출중"];
       const ROW2 = ["카페콜완료","외출콜완료","귀가","수납후미귀가"];
-      const ROW3 = ["1 진료실","2 진료실","3 진료실","4 진료실"]; // + 삭제(별도)
+      const ROW3 = ["1진료실","2진료실","3진료실","4진료실","삭제"];
+
       function makeBtn(text, onClick, cls="btn"){
         const b = document.createElement('button');
         b.className = cls; b.textContent = text; b.onclick = onClick;
+
+        // 상담대기중 / 면회대기중 버튼은 빨간 글씨
+        if (text === "상담대기중" || text === "면회대기중") {
+          b.style.color = "#dc2626";
+          b.style.fontWeight = "900";
+        }
         return b;
       }
+
       ROW1.forEach(s=> row1.appendChild(makeBtn(s, ()=>applyGlobalState(s))));
       ROW2.forEach(s=> row2.appendChild(makeBtn(s, ()=>applyGlobalState(s))));
-      ROW3.forEach(s=> row3.appendChild(makeBtn(s, ()=>applyGlobalState(s))));
-      const delBtn = makeBtn("삭제", onDelete, "btn dark");
-      row2.appendChild(delBtn);
+      ROW3.forEach(s=>{
+        if (s === "삭제") {
+          row3.appendChild(makeBtn(s, onDelete, "btn dark"));
+        } else {
+          row3.appendChild(makeBtn(s, ()=>applyGlobalState(s)));
+        }
+      });
 
       // 메모 저장
       const memoInput = document.getElementById('memoInput');
@@ -354,48 +357,44 @@
 
       // 상태 텍스트 컬러 매핑
       function colorForState(s){
-        if (s==="상담대기중") return "#dc2626";
+        if (s==="상담대기중" || s==="면회대기중") return "#dc2626";
         if (s==="원내대기중" || s==="카페대기중") return "#d97706";
         if (s==="외출중") return "#0284c7";
         if (s==="카페콜완료" || s==="외출콜완료") return "#16a34a";
-        if (s==="1 진료실" || s==="2 진료실" || s==="3 진료실" || s==="4 진료실") return "#2b5fa3";
+        if (s==="1 진료실" || s==="2 진료실" || s==="3 진료실" || s==="4 진료실") return "#2b5fa3";     // 공백 포함 케이스
+        if (s==="1진료실" || s==="2진료실" || s==="3진료실" || s==="4진료실") return "#2b5fa3";         // 공백 없는 케이스
         if (s==="귀가" || s==="수납후미귀가") return "#64748b";
         return "";
       }
 
       function renderLine(id, d){
         const line = document.createElement('div'); line.className = 'line'; line.dataset.id = id;
+
         const name = document.createElement('div');
-name.className = 'name';
+        name.className = 'name';
+        name.textContent = prettyName(d, id);
 
-// 이름은 그대로 출력
-name.textContent = prettyName(d, id);
+        if (d.memo && d.memo.trim() !== "") {
+          const memoIcon = document.createElement('span');
+          memoIcon.textContent = "📝";
+          memoIcon.style.marginLeft = "8px";
+          memoIcon.style.fontSize = "12px";
+          memoIcon.style.verticalAlign = "middle";
+          memoIcon.title = d.memo.trim();
+          name.appendChild(memoIcon);
+        }
 
-// 메모가 있으면 이모지 span 하나 따로 붙이기
-if (d.memo && d.memo.trim() !== "") {
-  const memoIcon = document.createElement('span');
-  memoIcon.textContent = "📝";
-  memoIcon.style.marginLeft = "8px";// 이름과 이모지 사이 여백
-  memoIcon.style.fontSize = "12px";
-  memoIcon.style.verticalAlign = "middle"; 
- // 마우스를 올리면 메모 내용 툴팁으로 표시
-  memoIcon.title = d.memo.trim();
-  name.appendChild(memoIcon);
-}
-  const state= document.createElement('div'); state.className='state'; state.textContent = d.location || '';
-  const color = colorForState(d.location||""); if (color) state.style.color = color;
+        const state= document.createElement('div'); state.className='state'; state.textContent = d.location || '';
+        const color = colorForState(d.location||""); if (color) state.style.color = color;
 
-// 업데이트 시간 표시 + ts 보관 → 주기적 갱신에 사용
-const upd  = document.createElement('div'); 
-upd.className='updated';
-
-if (d.updatedAt){
-  upd.dataset.ts = String(d.updatedAt);
-  // 기존: upd.textContent = renderUpdatedText(d.updatedAt);  ← 텍스트라 <br>이 안먹음:contentReference[oaicite:0]{index=0}
-  upd.innerHTML = renderUpdatedText(d.updatedAt);              // ← HTML로 넣기
-} else {
-  upd.textContent = '';
-}
+        const upd  = document.createElement('div'); 
+        upd.className='updated';
+        if (d.updatedAt){
+          upd.dataset.ts = String(d.updatedAt);
+          upd.innerHTML = renderUpdatedText(d.updatedAt);
+        } else {
+          upd.textContent = '';
+        }
 
         line.appendChild(name); line.appendChild(state); line.appendChild(upd);
         line.onclick = ()=>{
@@ -442,7 +441,7 @@ if (d.updatedAt){
       }
 
       // === 큰 팝업 제어 + 사운드 ===
-      const alertBox = document.getElementById('alertBox');  // 작은 배너
+      const alertBox = document.getElementById('alertBox');
       const alertWho = document.getElementById('alertWho');
       const ackBtn   = document.getElementById('ack');
 
@@ -452,13 +451,12 @@ if (d.updatedAt){
       const bigClose   = document.getElementById('bigClose');
       const bell       = document.getElementById('bell');
 
-      let lastAlertedId = null; // 같은 건 중복 알림 방지
-      let pendingReq = null;    // 현재 팝업에 표시 중인 요청 {id, d}
+      let lastAlertedId = null;
+      let pendingReq = null;
 
       function resolveAckLocation(current){
         if (current === "외출중") return "외출콜완료";
         if (current === "카페대기중") return "카페콜완료";
-        // 그 외에도 기본은 카페콜완료로 처리
         return "카페콜완료";
       }
 
@@ -471,7 +469,6 @@ if (d.updatedAt){
         bigOverlay.classList.remove('show');
         bigOverlay.setAttribute('aria-hidden','true');
       }
-
       bigClose.onclick = hideBigOverlay;
 
       // 실시간 리스트 & 알림
@@ -524,14 +521,14 @@ if (d.updatedAt){
         }
         if (!anyReq) {
           pendingReq = null;
-          lastAlertedId = null; // 모두 해제되면 다음 요청 시 다시 울림
+          lastAlertedId = null;
           hideBigOverlay();
         }
 
         conn.textContent="연결됨"; conn.className="pill ok";
       }, (e)=>{ conn.textContent="연결 오류"; conn.className="pill err"; showErr("리스트 구독 실패: "+e.message); });
 
-      // 처리완료(배너 / 팝업 공통 사용)
+      // 처리완료
       async function acknowledge(req){
         if (!req) return;
         const d = req.d;
@@ -540,8 +537,8 @@ if (d.updatedAt){
         hideBigOverlay();
       }
 
-      ackBtn.onclick   = ()=> acknowledge(pendingReq);  // 작은 배너의 처리완료
-      bigAck.onclick   = ()=> acknowledge(pendingReq);  // 큰 팝업의 처리완료
+      ackBtn.onclick   = ()=> acknowledge(pendingReq);
+      bigAck.onclick   = ()=> acknowledge(pendingReq);
 
       // 연결 테스트
       selftest.onclick = async ()=>{
@@ -561,3 +558,4 @@ if (d.updatedAt){
   </script>
 </body>
 </html>
+
