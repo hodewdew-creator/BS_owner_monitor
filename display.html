@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
-  <title>BS 대기실 모니터 (내부용)</title>
+  <title>BS 대기실 모니터 (내부용) </title>
   <style>
     :root{
       --bg:#0b1220; --fg:#ffffff; --muted:#9ca3af;
@@ -42,24 +42,32 @@
       border-radius:16px; padding:12px;
       display:flex; flex-direction:column; gap:10px;
     }
-    .title{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px }
-    .name{ font-size:22px; font-weight:900; letter-spacing:-.3px }
+    .title{
+      display:flex; align-items:flex-start; justify-content:space-between; gap:10px
+    }
+    .name{
+      font-size:22px; font-weight:900; letter-spacing:-.3px
+    }
     .meta{display:flex; flex-wrap:wrap; gap:8px}
 
-    /* 상태 배지 */
-    .b-상담대기중{background:var(--s-red); border-color:transparent; color:#fff}
+    .row{display:flex; align-items:center; justify-content:space-between; gap:10px}
+    .row .left{display:flex; align-items:center; gap:8px}
+    .row .right{display:flex; align-items:center; gap:8px}
+
+    /* 상태 배지 공통 */
+    .b{border:1px solid #374151; background:#1f2937; color:#fff;}
+    .b-상담대기중{background:var(--s-red); border-color:transparent}
     .b-원내대기중,.b-카페대기중{background:#ffd7a8; color:#111; border-color:transparent}
     .b-외출중{background:#38bdf8; color:#111; border-color:transparent}
-    .b-카페콜완료,.b-외출콜완료{background:#22c55e; border-color:transparent; color:#fff}
+    .b-카페콜완료,.b-외출콜완료{background:#22c55e; border-color:transparent}
     .b-귀가,.b-수납후미귀가{background:#e5e7eb; color:#111; border-color:transparent}
 
-    /* 진료실 배지 (1~4) — 백산 블루 */
+    /* ▼ 추가: 진료실 배지 (1~4) — 백산 블루 */
     .b-1진료실,.b-2진료실,.b-3진료실,.b-4진료실{
-      background:var(--brand);
-      color:#fff;
-      border-color:transparent;
+      background:#2b5fa3; color:#fff; border-color:transparent;
     }
 
+    /* ▼ 메모: 텍스트 길이만큼만 박스 */
     .memo{
       display:none;
       font-size:14px; line-height:1.25; font-weight:800;
@@ -72,8 +80,12 @@
       display:none; position:fixed; inset:auto 12px 12px 12px; z-index:50;
       padding:10px 12px; border-radius:12px; background:#f87171; color:#111; font-weight:800; border:1px solid #7f1d1d;
     }
+    .hint{font-size:12px; color:var(--muted)}
+    .bullet{display:inline-block; width:6px; height:6px; border-radius:999px; background:var(--muted)}
+    .sep{opacity:.5}
+
     .muted{color:var(--muted)}
-    .f12{font-size:12px} .f13{font-size:13px}
+    .f12{font-size:12px} .f13{font-size:13px} .f14{font-size:14px} .f15{font-size:15px}
   </style>
 </head>
 <body>
@@ -94,49 +106,55 @@
     const errBox=document.getElementById('err');
     const showErr=(msg)=>{ errBox.textContent=msg; errBox.style.display='block'; }
     const hideErr=()=>{ errBox.style.display='none'; }
+
     const elList=document.getElementById('list');
 
-    // 공백 유무 모두 커버: "1 진료실" / "1진료실"
-    const isClinic = (s)=> (/^[1-4]\s?진료실$/).test((s||'').trim());
+    // ▼ 추가: "1 진료실" / "1진료실" 모두 인식
+    const isClinic=(s)=>/^[1-4]\s?진료실$/.test((s||'').trim());
 
-    const badgeClass=(s)=>{
-      const map={
-        '상담대기중':'b-상담대기중',
-        '원내대기중':'b-원내대기중',
-        '카페대기중':'b-카페대기중',
-        '외출중':'b-외출중',
-        '카페콜완료':'b-카페콜완료',
-        '외출콜완료':'b-외출콜완료',
-        '귀가':'b-귀가',
-        '수납후미귀가':'b-수납후미귀가',
-        // 공백 있는/없는 표기 모두
-        '1 진료실':'b-1진료실','2 진료실':'b-2진료실','3 진료실':'b-3진료실','4 진료실':'b-4진료실',
-        '1진료실':'b-1진료실','2진료실':'b-2진료실','3진료실':'b-3진료실','4진료실':'b-4진료실',
-      };
-      return map[s] || (isClinic(s) ? `b-${s.replace(' ','')}` : '');
-    };
+    const badgeClass=(s)=>({
+      '상담대기중':'b-상담대기중',
+      '원내대기중':'b-원내대기중',
+      '카페대기중':'b-카페대기중',
+      '외출중':'b-외출중',
+      '카페콜완료':'b-카페콜완료',
+      '외출콜완료':'b-외출콜완료',
+      '귀가':'b-귀가',
+      '수납후미귀가':'b-수납후미귀가',
+      /* ▼ 추가: 공백 유무 모두 매핑 */
+      '1 진료실':'b-1진료실','2 진료실':'b-2진료실','3 진료실':'b-3진료실','4 진료실':'b-4진료실',
+      '1진료실':'b-1진료실','2진료실':'b-2진료실','3진료실':'b-3진료실','4진료실':'b-4진료실'
+    }[s]||'');
+
+    let auth, provider, db;
+
+    // ding 트리거 관리 (원본 유지)
+    let lastCall=new Set();
+    const prevState=new Map();
+    const prevHasMemo=new Map();
+    let inited=false;
 
     try{
       const { initializeApp }=await import("https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js");
-      const { getAuth, GoogleAuthProvider }=await import("https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js");
-      const { getFirestore, collection, query, orderBy, onSnapshot }=await import("https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js");
+      const { getAuth, GoogleAuthProvider, signInWithPopup }=await import("https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js");
+      const { getFirestore, collection, query, where, orderBy, onSnapshot, doc, updateDoc }=await import("https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js");
 
       const app = initializeApp({
         apiKey: "AIzaSyDUMMYxxxx",
         authDomain: "bs-owner-monitor.firebaseapp.com",
         projectId: "bs-owner-monitor",
       });
-      // ★ 인증 자동 팝업 제거 (기존 세션만 사용)
-      const auth=getAuth(app); const provider=new GoogleAuthProvider(); // provider는 보존만
+      auth=getAuth(app); provider=new GoogleAuthProvider(); db=getFirestore(app);
 
-      const db=getFirestore(app);
+      // 로그인 (원본 로직 유지)
+      await signInWithPopup(auth, provider);
 
-      // 실시간 구독
+      // 실시간 구독 (원본 유지 + 정렬만 변경)
       onSnapshot(query(collection(db,"cases"),orderBy("createdAt","desc")),(snap)=>{
         hideErr();
         let docs=snap.docs.map(d=>({id:d.id,...d.data()}));
 
-        // 정렬: 상담대기중(0) → 진료실(1) → 기타(2) → 귀가/수납후미귀가(3)
+        // ▼ 교체: 상담대기중(0) → 진료실(1) → 기타(2) → 귀가/수납후미귀가(3)
         docs.sort((a,b)=>{
           const rank=(d)=>{
             const s=d.location||'';
@@ -151,28 +169,24 @@
         });
 
         const frag=document.createDocumentFragment();
+
         docs.forEach(d=>{
           const card=document.createElement('div'); card.className='card';
 
+          // 제목줄
           const title=document.createElement('div'); title.className='title';
           const name=document.createElement('div'); name.className='name'; name.textContent=d.petName||'(이름 없음)';
           const meta=document.createElement('div'); meta.className='meta';
-
-          const state=document.createElement('span');
-          state.className=`badge ${badgeClass(d.location||'')}`;
-          state.textContent=d.location||'-';
+          const state=document.createElement('span'); state.className=`badge ${badgeClass(d.location||'')}`; state.textContent=d.location||'-';
           meta.appendChild(state);
-
           title.appendChild(name); title.appendChild(meta);
 
           // 메모
-          if(d.memo){
-            const memo=document.createElement('div'); memo.className='memo';
-            memo.textContent=d.memo; memo.style.display='inline-block';
-            card.appendChild(title); card.appendChild(memo);
-          }else{
-            card.appendChild(title);
-          }
+          const memo=document.createElement('div'); memo.className='memo';
+          if(d.memo){ memo.textContent=d.memo; memo.style.display='inline-block'; }
+
+          card.appendChild(title);
+          if(d.memo) card.appendChild(memo);
 
           frag.appendChild(card);
         });
@@ -187,6 +201,7 @@
   </script>
 </body>
 </html>
+
 
 
 
