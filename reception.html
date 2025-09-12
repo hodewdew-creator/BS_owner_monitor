@@ -297,7 +297,7 @@
         try {
           await addDoc(collection(db,"cases"),{
             patientName: pn, guardianName: gn,
-            location:"원내대기중",
+            location:"원내",
             createdAt: Date.now(), updatedAt: Date.now(),
             version:1, callRequested:false,
             memo:""
@@ -311,7 +311,7 @@
       const row2 = document.getElementById('row2');
       const row3 = document.getElementById('row3');
 
-      const ROW1 = ["상담대기중","면회대기중","원내대기중","카페대기중","외출중"];
+      const ROW1 = ["상담대기중","면회대기중","원내","카페","외출출"];
       const ROW2 = ["카페콜완료","외출콜완료","귀가","수납후미귀가"];
       const ROW3 = ["1진료실","2진료실","3진료실","4진료실","삭제"];
 
@@ -358,8 +358,8 @@
       // 상태 텍스트 컬러 매핑
       function colorForState(s){
         if (s==="상담대기중" || s==="면회대기중") return "#dc2626";
-        if (s==="원내대기중" || s==="카페대기중") return "#d97706";
-        if (s==="외출중") return "#0284c7";
+        if (s==="원내" || s==="카페") return "#d97706";
+        if (s==="외출출") return "#0284c7";
         if (s==="카페콜완료" || s==="외출콜완료") return "#16a34a";
         if (s==="1 진료실" || s==="2 진료실" || s==="3 진료실" || s==="4 진료실") return "#2b5fa3";     // 공백 포함 케이스
         if (s==="1진료실" || s==="2진료실" || s==="3진료실" || s==="4진료실") return "#2b5fa3";         // 공백 없는 케이스
@@ -455,8 +455,8 @@
       let pendingReq = null;
 
       function resolveAckLocation(current){
-        if (current === "외출중") return "외출콜완료";
-        if (current === "카페대기중") return "카페콜완료";
+        if (current === "외출출") return "외출콜완료";
+        if (current === "카페") return "카페콜완료";
         return "카페콜완료";
       }
 
