@@ -44,6 +44,7 @@
       border:1px solid #374151; background:#1f2937; color:#fff;
     }
     .b-상담대기중{background:var(--s-red); border-color:transparent}
+    .b-면회대기중{background:var(--s-red); border-color:transparent; color:#fff;} /* 추가 */
     .b-원내,.b-라운지{background:#ffd7a8; color:#111; border-color:transparent}
     .b-외출{background:#C084FC; color:#111; border-color:transparent}
     .b-라운지콜완료,.b-외출콜완료{background:#22c55e; border-color:transparent}
@@ -137,6 +138,7 @@
 
     const badgeClass=(s)=>({
       '상담대기중':'b-상담대기중',
+      '면회대기중':'b-면회대기중',   // 추가
       '원내':'b-원내',
       '라운지':'b-라운지',
       '외출':'b-외출',
@@ -151,11 +153,11 @@
 
     let auth, provider, db;
 
-    // ding 트리거 관리 (원본 유지)
-    let lastCall=new Set();           // callRequested 알림(기존)
-    const prevState=new Map();        // id -> 직전 location
-    const prevHasMemo=new Map();      // id -> 직전 memo 유무(boolean)
-    let inited=false;                 // 첫 스냅샷에는 소리 안 울림
+    // ding 트리거 관리
+    let lastCall=new Set();
+    const prevState=new Map();
+    const prevHasMemo=new Map();
+    let inited=false;
 
     try{
       const { initializeApp }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
@@ -196,11 +198,11 @@
         hideErr();
         let docs=snap.docs.map(d=>({id:d.id,...d.data()}));
 
-        // ▼ 교체: 상담대기중(0) → 진료실(1) → 기타(2) → 귀가/수납후미귀가(3)
+        // ▼ 교체: 상담대기중/면회대기중(0) → 진료실(1) → 기타(2) → 귀가/수납후미귀가(3)
         docs.sort((a,b)=>{
           const rank=(d)=>{
             const s=d.location||'';
-            if(s==="상담대기중") return 0;
+            if(s==="상담대기중" || s==="면회대기중") return 0;
             if(isClinic(s)) return 1;
             if(s==="귀가"||s==="수납후미귀가") return 3;
             return 2;
@@ -213,7 +215,7 @@
         const frag=document.createDocumentFragment();
 
         docs.forEach(d=>{
-          // --- 소리 트리거 계산 (변경 감지) ---
+          // --- 소리 트리거 계산 ---
           let shouldDing=false;
           const curState = d.location||"";
           const curHasMemo = !!((d.memo||"").trim());
@@ -221,7 +223,7 @@
           if(inited){
             if(d.callRequested && !lastCall.has(d.id)) shouldDing=true;
             const prevS = prevState.get(d.id);
-            if(curState==="상담대기중" && prevS!=="상담대기중") shouldDing=true;
+            if((curState==="상담대기중" || curState==="면회대기중") && curState!==prevS) shouldDing=true;
             const prevM = prevHasMemo.get(d.id);
             if(curHasMemo && !prevM) shouldDing=true;
           }
@@ -296,3 +298,4 @@
   </script>
 </body>
 </html>
+
