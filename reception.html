@@ -2,560 +2,301 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>BS 보호자 모니터 (리셉용)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+  <title>BS 보호자 모니터 (내부용) </title>
   <style>
     :root{
-      --bg:#fafafa; --card:#ffffff; --border:#e5e7eb;
-      --fg:#0f172a; --muted:#64748b;
-      --brand:#2b5fa3; --brand-ink:#102339;
-      --btn:#f1f5f9; --btn-ink:#111827; --btn-hover:#e2e8f0;
-      --pill:#1f2937;
+      --bg:#0b1220; --fg:#ffffff; --muted:#9ca3af;
+      --card:#111827cc; --border:#1f2937; --blur:8px;
+      --brand:#2b5fa3;
+      --s-red:#dc2626; --s-amber:#d97706; --s-sky:#0284c7; --s-green:#16a34a; --s-gray:#64748b;
     }
-    html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto}
-
-    /* 상단 우측: 로그인/로그아웃 */
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto}
     .topbar{
-      position:sticky; top:0; z-index:60;
-      display:flex; justify-content:flex-end; align-items:center;
-      gap:6px; padding:6px 10px; background:rgba(250,250,250,.85); backdrop-filter:saturate(180%) blur(6px);
-      border-bottom:1px solid var(--border);
+      position:fixed; inset:0 0 auto 0; z-index:10;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:10px 14px; background:var(--card); border-bottom:1px solid var(--border); backdrop-filter:blur(var(--blur));
       font-size:12px;
     }
-    .topbar button{border:0;border-radius:8px;padding:6px 8px;background:var(--btn);color:var(--btn-ink);cursor:pointer}
-    .topbar button:hover{background:var(--btn-hover)}
-    .topbar .ok{background:var(--brand);color:#fff}
-    .topbar .ok:hover{filter:brightness(.95)}
-    .whoami{opacity:.7}
+    .brandwrap{display:flex; align-items:center; gap:10px; font-weight:900}
+    .logo{width:22px;height:22px;border-radius:5px;object-fit:cover}
+    .brand{letter-spacing:.2px}
+    .right{display:flex;align-items:center;gap:8px}
+    .whoami{opacity:.8}
+    .tbtn{cursor:pointer;border:0;border-radius:8px;padding:6px 8px;background:#1f2937;color:#fff;border:1px solid #374151}
+    .tbtn.ok{background:var(--brand);border-color:transparent}
+    .pill{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800;background:#1f2937;border:1px solid #374151}
+    .pill.ok{background:#16a34a}.pill.err{background:#dc2626}.pill.warn{background:#f59e0b;color:#111}
 
-    main{padding:16px}
-    h1{margin:6px 0 12px; display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:.2px}
-    .logo{width:28px;height:28px;border-radius:6px;object-fit:cover}
-
-    .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px;}
-    label{display:block; font-size:12px; color:var(--muted); margin:0 0 4px 2px}
-
-    .inputs-wrap{
-      display:grid;
-      grid-template-columns: 120px 120px 100px;
-      gap:12px;
-      align-items:end;
+    .wrap{min-height:100%;padding:64px 14px 20px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+    .card{
+      background:var(--card); border:1px solid var(--border); border-radius:16px;
+      padding:14px; display:flex; flex-direction:column; gap:10px;
     }
-    .inputs-wrap input{
-      width:100%;
-      min-width:0;
-      padding:8px 10px;
-      border:1px solid #cbd5e1;
-      border-radius:10px;
-      font-size:15px;
-      background:#fff;
-      box-sizing:border-box;
+    .card.call{outline:4px solid rgba(220,38,38,.6); outline-offset:-4px; animation:call 1.2s linear infinite}
+    @keyframes call{0%,100%{outline-color:rgba(220,38,38,.2)}50%{outline-color:rgba(220,38,38,.8)}}
+
+    .head{display:flex; align-items:center; justify-content:space-between; gap:10px}
+    .name{font-weight:900; font-size:18px; word-break:keep-all}
+    .badge{
+      border-radius:999px; padding:6px 10px; font-weight:900; font-size:12px; white-space:nowrap;
+      border:1px solid #374151; background:#1f2937; color:#fff;
     }
-    #addCase{
-      width:100%;
-      max-width:unset;
-      white-space:nowrap;
-      box-sizing:border-box;
+    /* 상담대기중과 면회대기중 동일 스타일 */
+    .b-상담대기중,.b-면회대기중{background:var(--s-red); border-color:transparent}
+    .b-원내,.b-카페{background:#ffd7a8; color:#111; border-color:transparent}
+    .b-외출{background:#C084FC; color:#111; border-color:transparent}
+    .b-카페콜완료,.b-외출콜완료{background:#22c55e; border-color:transparent}
+    .b-귀가,.b-수납후미귀가{background:#e5e7eb; color:#111; border-color:transparent}
+
+    /* ▼ 추가: 진료실 배지 (1~4) */
+    .b-1진료실,.b-2진료실,.b-3진료실,.b-4진료실{
+      background:#2b5fa3; color:#fff; border-color:transparent;
     }
 
-    /* 버튼 */
-    .btn{cursor:pointer;border:1px solid #d1d5db;border-radius:10px;padding:12px 14px;font-weight:700;background:var(--btn);color:var(--btn-ink);white-space:nowrap;transition:.15s}
-    .btn:hover{background:var(--btn-hover)}
-    .btn.ok{border-color:transparent;background:var(--brand);color:#fff}
-    .btn.ok:hover{filter:brightness(.95)}
-    .btn.dark{border-color:#111827;background:#111827;color:#fff}
+    /* ▼ 메모: 텍스트 길이만큼만 박스 */
+    .memo{
+      display:none;
+      font-size:14px; line-height:1.25; font-weight:800;
+      color:#111; background:#fde68a; border:1px solid #f59e0b;
+      padding:5px 8px; border-radius:10px;
+      display:inline-block; align-self:flex-start;
+      max-width:100%; overflow-wrap:anywhere;
+    }
+    .memo.show{ display:inline-block; }
 
-    .small{font-size:12px;opacity:.75;margin-top:24px}
+    .meta{font-size:12px; color:var(--muted)}
 
-    /* 상태 버튼: 두 줄 고정 */
-    .toolbar{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto}
-    .toolbar + .toolbar{margin-top:8px}
-    .toolbar button{white-space:nowrap}
-
-    /* 메모 */
-    .memo-wrap{display:flex; gap:8px; align-items:center; margin-top:16px}
-    .memo-wrap input{flex:1 1 auto; min-width:120px; padding:8px 10px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; font-size:14px;}
-
-    /* 리스트 */
-    .list{display:grid;grid-template-columns:1fr;gap:6px;margin-top:8px}
-    .line{display:grid;grid-template-columns:1.4fr .8fr .6fr;gap:8px;align-items:center;background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 10px}
-    .name{font-weight:800;text-align:left}
-    .state{font-weight:900;text-align:center}
-    .updated{font-size:12px;opacity:.7;text-align:right; word-break: keep-all;}
-    .line.select{outline:3px solid var(--brand); outline-offset:0}
-    .line.calling{outline:3px solid rgba(220,38,38,.6); animation:callblink 1.1s linear infinite}
-    @keyframes callblink{0%,100%{outline-color:rgba(220,38,38,.2)}50%{outline-color:rgba(220,38,38,.8)}}
-
-    /* 하단 상태바 */
-    .statusbar{position:fixed;bottom:8px;left:8px;right:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;z-index:55}
-    .pill{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;background:var(--pill);color:#fff}
-    .pill.ok{background:#16a34a}.pill.err{background:#dc2626}.pill.warn{background:#f59e0b}
+    .actions{display:flex; gap:8px; flex-wrap:wrap}
+    .btn{cursor:pointer; border:0; border-radius:10px; padding:8px 12px; font-size:13px; font-weight:700;
+      background:#1f2937; color:#fff; border:1px solid #374151;}
+    .btn.ghost{background:transparent; color:#e5e7eb}
 
     .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700;white-space:pre-wrap}
     .errbox.show{display:block}
-
-    /* 기존 작은 배너 알림 */
-    .alert{display:none;margin:10px 0;padding:14px 16px;border-radius:12px;border:2px solid #ef4444;background:#fef2f2;color:#991b1b;font-weight:900}
-    .alert.show{display:block;animation:pop .5s}
-    @keyframes pop{from{transform:scale(.98)}to{transform:scale(1)}}
-
-    /* === 큰 팝업 오버레이 === */
-    .overlay{
-      position:fixed; inset:0; z-index:80; display:none; align-items:center; justify-content:center;
-      background:rgba(2,6,23,.65); backdrop-filter:blur(4px);
-    }
-    .overlay.show{display:flex}
-    .modal{
-      width:min(720px,92vw);
-      background:#ffffff; color:#0f172a; border-radius:16px; border:3px solid #ef4444;
-      box-shadow:0 20px 60px rgba(0,0,0,.35);
-      padding:22px 22px 18px; text-align:center;
-      animation:flash 0.9s ease-in-out 1;
-    }
-    @keyframes flash{0%{transform:scale(.98)}100%{transform:scale(1)}}
-    .modal h2{margin:0 0 6px; font-size:28px; font-weight:900}
-    .who{font-size:40px; font-weight:900; margin:6px 0 2px}
-    .hint{font-size:13px; color:#64748b; margin-bottom:14px}
-    .actions{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:8px}
-    .actions .btn{padding:12px 16px; font-size:15px}
   </style>
 </head>
 <body>
-  <!-- 상단 우측 로그인 영역 -->
-  <div class="topbar" id="authBox">
-    <span id="whoami" class="whoami"></span>
-    <button id="loginBtn" class="ok">Google로 로그인</button>
-    <button id="logoutBtn" style="display:none">로그아웃</button>
+  <div class="topbar">
+    <div class="brandwrap">
+      <img class="logo" src="image-512.png" alt="BS Logo" />
+      <div class="brand">BS 보호자 모니터 (내부용) </div>
+    </div>
+    <div class="right">
+      <span id="whoami" class="whoami"></span>
+      <button id="loginBtn" class="tbtn ok">Google 로그인</button>
+      <button id="logoutBtn" class="tbtn" style="display:none">로그아웃</button>
+      <span id="conn" class="pill warn">연결 확인 중…</span>
+    </div>
   </div>
 
-  <main>
-    <h1>
-      <img class="logo" src="image-512.png" alt="BS Logo" />
-      BS 보호자 모니터 (리셉용)
-    </h1>
-
+  <div class="wrap">
     <div id="err" class="errbox"></div>
+    <div id="grid" class="grid"></div>
+  </div>
 
-    <!-- 작은 배너 알림 -->
-    <div id="alertBox" class="alert">📣 처치실에서 <span id="alertWho"></span> 콜 요청!
-      <button id="ack" class="btn ok" style="margin-left:8px">처리완료</button>
-    </div>
-
-    <!-- === 큰 팝업 오버레이 === -->
-    <div id="bigOverlay" class="overlay" aria-hidden="true">
-      <div class="modal" role="dialog" aria-modal="true">
-        <h2>📣 콜 요청</h2>
-        <div id="bigWho" class="who"></div>
-        <div class="hint">“처리완료”를 누르면 상태가 자동으로 업데이트됩니다.</div>
-        <div class="actions">
-          <button id="bigAck" class="btn ok">처리완료</button>
-          <button id="bigClose" class="btn">닫기</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="panel" style="display:none">
-      <!-- 환자 입력 + 추가 (한 줄 고정) -->
-      <div class="card">
-        <div class="inputs-wrap">
-          <div>
-            <label>고양이 이름</label>
-            <input id="patientName" type="text" placeholder="예: 냥냥이" />
-          </div>
-          <div>
-            <label>보호자 이름</label>
-            <input id="guardianName" type="text" placeholder="예: 김땡땡" />
-          </div>
-          <button id="addCase" class="btn ok">환자 추가</button>
-        </div>
-
-        <!-- 상태 버튼: 두 줄 고정 -->
-        <div class="small"> [하단 리스트 중 선택된 환자에 적용됩니다.]</div>
-        <div class="toolbar" id="row1"></div>
-        <div class="toolbar" id="row2"></div>
-        <div class="toolbar" id="row3"></div>
-
-        <!-- 메모 -->
-        <div class="memo-wrap">
-          <input id="memoInput" type="text" placeholder="간단한 메모를 입력하세요…" />
-          <button id="memoSaveBtn" class="btn">메모 저장</button>
-        </div>
-      </div>
-
-      <!-- 환자 리스트 -->
-      <div class="card">
-        <div class="list">
-          <div class="line" style="background:#f8fafc">
-            <div class="name">이름</div>
-            <div class="state">상태</div>
-            <div class="updated">업데이트</div>
-          </div>
-          <div id="caseList" class="list"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="statusbar">
-      <span id="conn" class="pill warn">연결 확인 중…</span>
-      <button id="selftest" class="pill">연결 테스트</button>
-    </div>
-
-    <!-- 효과음 -->
-    <audio id="bell" preload="auto">
-      <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
-    </audio>
-  </main>
+  <audio id="ding" preload="auto">
+    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+  </audio>
 
   <script type="module">
-    const errBox = document.getElementById('err');
-    function showErr(msg){console.error(msg); errBox.textContent=msg; errBox.classList.add('show');}
-    function hideErr(){errBox.classList.remove('show');}
+    const grid=document.getElementById('grid');
+    const conn=document.getElementById('conn');
+    const ding=document.getElementById('ding');
+    const errBox=document.getElementById('err');
+    const whoami=document.getElementById('whoami');
+    const loginBtn=document.getElementById('loginBtn');
+    const logoutBtn=document.getElementById('logoutBtn');
 
-    // 상대시간(몇 분 전)
-    const relTime = (ts)=>{
+    const showErr=(m)=>{console.error(m);errBox.textContent=m;errBox.classList.add('show')};
+    const hideErr=()=>errBox.classList.remove('show');
+
+    const relTime=(ts)=>{if(!ts)return "";const s=Math.floor((Date.now()-ts)/1000);
+      if(s<60)return`${s}초 전`;const m=Math.floor(s/60);if(m<60)return`${m}분 전`;
+      const h=Math.floor(m/60);if(h<24)return`${h}시간 전`;const d=Math.floor(h/24);return`${d}일 전`};
+
+    // 오전/오후 h:mm 포맷
+    function formatKTime(ts){
       if(!ts) return "";
-      const s = Math.floor((Date.now()-ts)/1000);
-      if (s < 60) return `${s}초 전`;
-      const m = Math.floor(s/60); if (m < 60) return `${m}분 전`;
-      const h = Math.floor(m/60); if (h < 24) return `${h}시간 전`;
-      const d = Math.floor(h/24); return `${d}일 전`;
-    };
-
-    // 절대시간(오전/오후 h:mm)
-    const formatKTime = (ts)=>{
-      if(!ts) return "";
-      const dt = new Date(ts);
-      let h = dt.getHours();
-      const m = String(dt.getMinutes()).padStart(2, '0');
-      const ampm = h < 12 ? '오전' : '오후';
-      h = h % 12; if (h === 0) h = 12;
-      return `${ampm} ${h}:${m}`;
-    };
-
-    // 표시 문자열 조합
-    const renderUpdatedText = (ts)=> `${relTime(ts)}<br>(${formatKTime(ts)})`;
-
-    // 주기적 갱신 타이머(30초마다)
-    let tickTimer = null;
-    function startTick(){
-      if (tickTimer) return;
-      tickTimer = setInterval(()=>{
-        document.querySelectorAll('.updated[data-ts]').forEach(el=>{
-          const ts = Number(el.dataset.ts);
-          if (ts) el.innerHTML = renderUpdatedText(ts);
-        });
-      }, 30_000);
+      const d=new Date(ts);
+      let h=d.getHours(), m=d.getMinutes();
+      const ampm = h<12 ? "오전" : "오후";
+      h = h%12 || 12;
+      const mm = String(m).padStart(2,"0");
+      return `${ampm} ${h}:${mm}`;
     }
 
-    window.addEventListener('error', e=> showErr('스크립트 에러: '+(e.message||'unknown')));
+    // 30초마다 상대시간 + 로컬시각 갱신
+    setInterval(()=>{document.querySelectorAll('[data-updated]').forEach(el=>{
+      const ts=Number(el.dataset.updated||0);
+      el.textContent = ts ? `업데이트: ${relTime(ts)} (${formatKTime(ts)})` : '';
+    });},30_000);
 
-    try {
-      const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-      const { getFirestore, collection, addDoc, onSnapshot, doc, runTransaction, query, orderBy, setDoc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-      const { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+    // ▼ 추가: “1 진료실/1진료실” 모두 인식
+    const isClinic=(s)=>/^[1-4]\s?진료실$/.test((s||'').trim());
 
-      const firebaseConfig = { apiKey:"AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4", authDomain:"bs-owner-monitor.firebaseapp.com", projectId:"bs-owner-monitor" };
-      const app = initializeApp(firebaseConfig);
-      const db  = getFirestore(app);
-      const auth = getAuth(app);
-      await setPersistence(auth, browserLocalPersistence);
-      const provider = new GoogleAuthProvider();
+    const badgeClass=(s)=>({
+      '상담대기중':'b-상담대기중',
+      '면회대기중':'b-면회대기중',      // 추가: 상담대기중과 동일 스타일
+      '원내':'b-원내',
+      '카페':'b-카페',
+      '외출':'b-외출',
+      '카페콜완료':'b-카페콜완료',
+      '외출콜완료':'b-외출콜완료',
+      '귀가':'b-귀가',
+      '수납후미귀가':'b-수납후미귀가',
+      // ▼ 추가: 공백 유/무 모두
+      '1 진료실':'b-1진료실','2 진료실':'b-2진료실','3 진료실':'b-3진료실','4 진료실':'b-4진료실',
+      '1진료실':'b-1진료실','2진료실':'b-2진료실','3진료실':'b-3진료실','4진료실':'b-4진료실'
+    }[s]||'');
 
-      // 상단 로그인 버튼 동작
-      const loginBtn = document.getElementById('loginBtn');
-      const logoutBtn= document.getElementById('logoutBtn');
-      const whoami   = document.getElementById('whoami');
-      const panel    = document.getElementById('panel');
-      const conn     = document.getElementById('conn');
-      const selftest = document.getElementById('selftest');
+    let auth, provider, db;
 
-      loginBtn.onclick = async () => { try { await signInWithPopup(auth, provider); } catch(e){ showErr(e.message); } };
-      logoutBtn.onclick= async () => { await signOut(auth); };
+    // ding 트리거 관리 (원본 유지)
+    let lastCall=new Set();           // callRequested 알림(기존)
+    const prevState=new Map();        // id -> 직전 location
+    const prevHasMemo=new Map();      // id -> 직전 memo 유무(boolean)
+    let inited=false;                 // 첫 스냅샷에는 소리 안 울림
 
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          whoami.textContent = user.email;
-          panel.style.display = "";
-          logoutBtn.style.display = "";
-          loginBtn.style.display = "none";
-        } else {
-          whoami.textContent = "";
-          panel.style.display = "none";
-          logoutBtn.style.display = "none";
-          loginBtn.style.display = "";
-        }
-      });
+    try{
+      const { initializeApp }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+      const { getFirestore, collection, onSnapshot, query, orderBy, runTransaction, doc }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      const { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
 
-      // 신규 환자 추가
-      const patientName = document.getElementById('patientName');
-      const guardianName= document.getElementById('guardianName');
-      const addCaseBtn  = document.getElementById('addCase');
-      addCaseBtn.onclick = async ()=>{
-        const pn = patientName.value.trim();
-        const gn = guardianName.value.trim();
-        if (!pn && !gn) return showErr("이름을 입력하세요.");
-        try {
-          await addDoc(collection(db,"cases"),{
-            patientName: pn, guardianName: gn,
-            location:"원내",
-            createdAt: Date.now(), updatedAt: Date.now(),
-            version:1, callRequested:false,
-            memo:""
-          });
-          patientName.value = ""; guardianName.value = ""; hideErr();
-        } catch(e){ showErr("환자 추가 실패: "+e.message); }
-      };
+      const firebaseConfig={apiKey:"AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4",authDomain:"bs-owner-monitor.firebaseapp.com",projectId:"bs-owner-monitor"};
+      const app=initializeApp(firebaseConfig);
+      db=getFirestore(app);
 
-      // 상태 버튼: 재정리 (요청안 반영)
-      const row1 = document.getElementById('row1');
-      const row2 = document.getElementById('row2');
-      const row3 = document.getElementById('row3');
+      auth=getAuth(app);
+      await setPersistence(auth, browserLocalPersistence).catch(e=>showErr('Persistence 설정 실패: '+e.message));
+      provider=new GoogleAuthProvider();
+      getRedirectResult(auth).catch(e=>showErr('리다이렉트 결과 오류: '+e.message));
 
-      const ROW1 = ["상담대기중","면회대기중","원내","카페","외출"];
-      const ROW2 = ["카페콜완료","외출콜완료","귀가","수납후미귀가"];
-      const ROW3 = ["1진료실","2진료실","3진료실","4진료실","삭제"];
-
-      function makeBtn(text, onClick, cls="btn"){
-        const b = document.createElement('button');
-        b.className = cls; b.textContent = text; b.onclick = onClick;
-
-        // 상담대기중 / 면회대기중 버튼은 빨간 글씨
-        if (text === "상담대기중" || text === "면회대기중") {
-          b.style.color = "#dc2626";
-          b.style.fontWeight = "900";
-        }
-        return b;
-      }
-
-      ROW1.forEach(s=> row1.appendChild(makeBtn(s, ()=>applyGlobalState(s))));
-      ROW2.forEach(s=> row2.appendChild(makeBtn(s, ()=>applyGlobalState(s))));
-      ROW3.forEach(s=>{
-        if (s === "삭제") {
-          row3.appendChild(makeBtn(s, onDelete, "btn dark"));
-        } else {
-          row3.appendChild(makeBtn(s, ()=>applyGlobalState(s)));
-        }
-      });
-
-      // 메모 저장
-      const memoInput = document.getElementById('memoInput');
-      const memoSaveBtn = document.getElementById('memoSaveBtn');
-      memoSaveBtn.onclick = async ()=>{
-        if (!selectedId) return showErr("먼저 환자 한 명을 선택하세요.");
-        const text = memoInput.value.trim();
-        await updateCase(selectedId, { memo: text });
-      };
-
-      let selectedId = null; // 선택된 환자
-      const caseList = document.getElementById('caseList');
-
-      function prettyName(d, id){
-        return (d.patientName||d.guardianName)
-          ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName))
-          : id;
-      }
-
-      // 상태 텍스트 컬러 매핑
-      function colorForState(s){
-        if (s==="상담대기중" || s==="면회대기중") return "#dc2626";
-        if (s==="원내" || s==="카페") return "#d97706";
-        if (s==="외출") return "#0284c7";
-        if (s==="카페콜완료" || s==="외출콜완료") return "#16a34a";
-        if (s==="1 진료실" || s==="2 진료실" || s==="3 진료실" || s==="4 진료실") return "#2b5fa3";     // 공백 포함 케이스
-        if (s==="1진료실" || s==="2진료실" || s==="3진료실" || s==="4진료실") return "#2b5fa3";         // 공백 없는 케이스
-        if (s==="귀가" || s==="수납후미귀가") return "#64748b";
-        return "";
-      }
-
-      function renderLine(id, d){
-        const line = document.createElement('div'); line.className = 'line'; line.dataset.id = id;
-
-        const name = document.createElement('div');
-        name.className = 'name';
-        name.textContent = prettyName(d, id);
-
-        if (d.memo && d.memo.trim() !== "") {
-          const memoIcon = document.createElement('span');
-          memoIcon.textContent = "📝";
-          memoIcon.style.marginLeft = "8px";
-          memoIcon.style.fontSize = "12px";
-          memoIcon.style.verticalAlign = "middle";
-          memoIcon.title = d.memo.trim();
-          name.appendChild(memoIcon);
-        }
-
-        const state= document.createElement('div'); state.className='state'; state.textContent = d.location || '';
-        const color = colorForState(d.location||""); if (color) state.style.color = color;
-
-        const upd  = document.createElement('div'); 
-        upd.className='updated';
-        if (d.updatedAt){
-          upd.dataset.ts = String(d.updatedAt);
-          upd.innerHTML = renderUpdatedText(d.updatedAt);
-        } else {
-          upd.textContent = '';
-        }
-
-        line.appendChild(name); line.appendChild(state); line.appendChild(upd);
-        line.onclick = ()=>{
-          selectedId = id;
-          [...caseList.children].forEach(el=> el.classList.remove('select'));
-          line.classList.add('select');
-          memoInput.value = d.memo || "";
-        };
-        if (d.callRequested) line.classList.add('calling');
-        return line;
-      }
-
-      async function updateCase(id, data){
-        try {
-          await runTransaction(db, async (tx)=>{
-            const ref = doc(db,"cases", id);
-            const snap = await tx.get(ref);
-            const prev = snap.exists()? snap.data(): {version:0};
-            tx.set(ref, { ...data, updatedAt: Date.now(), version:(prev.version||0)+1 }, { merge:true });
-          });
-          hideErr();
-        } catch(e){ showErr("저장 실패: "+e.message); }
-      }
-
-      async function applyGlobalState(state){
-        if (!selectedId) { showErr("먼저 환자 한 명을 리스트에서 클릭해 선택하세요."); return; }
-        if (state === "귀가") {
-          const yes = confirm("리스트에서 삭제할까요? (예: 문서를 삭제 / 아니오: 상태만 '귀가'로 표시)");
-          if (yes) { return onDelete(); }
-        }
-        await updateCase(selectedId, { location: state, callRequested:false });
-      }
-
-      async function onDelete(){
-        if (!selectedId) return showErr("먼저 환자 한 명을 선택하세요.");
-        const ok = confirm("정말 삭제하시겠습니까? (되돌릴 수 없습니다)");
-        if (!ok) return;
-        try {
-          await deleteDoc(doc(db,"cases", selectedId));
-          selectedId = null;
-          hideErr();
-          memoInput.value = "";
-        }catch(e){ showErr("삭제 실패: "+e.message); }
-      }
-
-      // === 큰 팝업 제어 + 사운드 ===
-      const alertBox = document.getElementById('alertBox');
-      const alertWho = document.getElementById('alertWho');
-      const ackBtn   = document.getElementById('ack');
-
-      const bigOverlay = document.getElementById('bigOverlay');
-      const bigWho     = document.getElementById('bigWho');
-      const bigAck     = document.getElementById('bigAck');
-      const bigClose   = document.getElementById('bigClose');
-      const bell       = document.getElementById('bell');
-
-      let lastAlertedId = null;
-      let pendingReq = null;
-
-      function resolveAckLocation(current){
-        if (current === "외출") return "외출콜완료";
-        if (current === "카페") return "카페콜완료";
-        return "카페콜완료";
-      }
-
-      function showBigOverlay(name){
-        bigWho.textContent = name;
-        bigOverlay.classList.add('show');
-        bigOverlay.setAttribute('aria-hidden','false');
-      }
-      function hideBigOverlay(){
-        bigOverlay.classList.remove('show');
-        bigOverlay.setAttribute('aria-hidden','true');
-      }
-      bigClose.onclick = hideBigOverlay;
-
-      // 실시간 리스트 & 알림
-      onSnapshot(query(collection(db,"cases"), orderBy("createdAt","desc")), (snap)=>{
-        hideErr();
-        caseList.innerHTML = "";
-        let firstId = null;
-        let anyReq = null;
-        let selectedDocData = null;
-
-        snap.forEach(docu=>{
-          const d = docu.data();
-          const el = renderLine(docu.id, d);
-          caseList.appendChild(el);
-          if (!firstId) firstId = docu.id;
-          if (docu.id === selectedId) selectedDocData = d;
-          if (d.callRequested) {
-            anyReq = { id: docu.id, d };
+      async function doLogin(){
+        try{ await signInWithPopup(auth, provider); }
+        catch(e){
+          if(e?.code==='auth/operation-not-supported-in-this-environment' || String(e?.message||'').includes('popup')){
+            showErr('팝업 로그인 불가 → 리다이렉트 로그인으로 진행합니다.');
+            await signInWithRedirect(auth, provider);
+            return;
           }
+          showErr('로그인 실패: '+(e.code||'')+' '+e.message);
+        }
+      }
+      loginBtn.onclick=doLogin;
+      logoutBtn.onclick=async()=>{ try{ await signOut(auth); }catch(e){ showErr('로그아웃 실패: '+e.message);} };
+
+      onAuthStateChanged(auth,(user)=>{
+        if(user){ whoami.textContent=user.email; logoutBtn.style.display=''; loginBtn.style.display='none'; }
+        else{ whoami.textContent=''; logoutBtn.style.display='none'; loginBtn.style.display=''; }
+      });
+
+      conn.textContent="연결됨";conn.className="pill ok";
+
+      onSnapshot(query(collection(db,"cases"),orderBy("createdAt","desc")),(snap)=>{
+        hideErr();
+        let docs=snap.docs.map(d=>({id:d.id,...d.data()}));
+
+        // ▼ 정렬: 상담/면회(0) → 진료실(1) → 기타(2) → 귀가/수납후미귀가(3)
+        docs.sort((a,b)=>{
+          const rank=(d)=>{
+            const s=d.location||'';
+            if(s==="상담대기중" || s==="면회대기중") return 0;   // 추가
+            if(isClinic(s)) return 1;
+            if(s==="귀가"||s==="수납후미귀가") return 3;
+            return 2;
+          };
+          const oa=rank(a), ob=rank(b);
+          if(oa!==ob) return oa-ob;
+          return (b.createdAt||0)-(a.createdAt||0);
         });
 
-        // 최초 자동 선택 + 메모 채우기
-        if (!selectedId && firstId) {
-          selectedId = firstId;
-          const firstEl = caseList.querySelector('[data-id="'+firstId+'"]');
-          if (firstEl) firstEl.classList.add('select');
-          const firstData = snap.docs.find(x=>x.id===firstId)?.data();
-          memoInput.value = (firstData && firstData.memo) ? firstData.memo : "";
-        }
+        const frag=document.createDocumentFragment();
 
-        if (selectedId && selectedDocData) {
-          memoInput.value = selectedDocData.memo || "";
-        }
+        docs.forEach(d=>{
+          // --- 소리 트리거 계산 (변경 감지) ---
+          let shouldDing=false;
+          const curState = d.location||"";
+          const curHasMemo = !!((d.memo||"").trim());
 
-        // 작은 배너
-        if (anyReq) {
-          const d = anyReq.d;
-          alertWho.textContent = prettyName(d, anyReq.id);
-          alertBox.classList.add('show');
-        } else {
-          alertBox.classList.remove('show');
-        }
+          if(inited){
+            if(d.callRequested && !lastCall.has(d.id)) shouldDing=true;
+            const prevS = prevState.get(d.id);
+            if((curState==="상담대기중" || curState==="면회대기중") && prevS!==curState) shouldDing=true; // 추가
+            const prevM = prevHasMemo.get(d.id);
+            if(curHasMemo && !prevM) shouldDing=true;
+          }
 
-        // 큰 팝업 + 사운드 (새로운 요청일 때만)
-        if (anyReq && anyReq.id !== lastAlertedId) {
-          pendingReq = anyReq;
-          showBigOverlay(prettyName(anyReq.d, anyReq.id));
-          try { bell.currentTime = 0; bell.play().catch(()=>{}); } catch(e){}
-          lastAlertedId = anyReq.id;
-        }
-        if (!anyReq) {
-          pendingReq = null;
-          lastAlertedId = null;
-          hideBigOverlay();
-        }
+          if(d.callRequested) lastCall.add(d.id); else lastCall.delete(d.id);
+          if(shouldDing){ try{ ding.currentTime=0; ding.play().catch(()=>{});}catch(e){} }
+          prevState.set(d.id, curState);
+          prevHasMemo.set(d.id, curHasMemo);
 
-        conn.textContent="연결됨"; conn.className="pill ok";
-      }, (e)=>{ conn.textContent="연결 오류"; conn.className="pill err"; showErr("리스트 구독 실패: "+e.message); });
+          // --- 카드 렌더 ---
+          const card=document.createElement('div');card.className='card';
+          if(d.callRequested) card.classList.add('call');
 
-      // 처리완료
-      async function acknowledge(req){
-        if (!req) return;
-        const d = req.d;
-        const newState = resolveAckLocation(d.location||"");
-        await updateCase(req.id, { callRequested:false, location:newState });
-        hideBigOverlay();
+          const head=document.createElement('div');head.className='head';
+          const name=document.createElement('div');name.className='name';
+          name.textContent=(d.patientName||d.guardianName)
+            ?(d.patientName&&d.guardianName?`${d.patientName}(${d.guardianName})`:(d.patientName||d.guardianName))
+            :d.id;
+          const badge=document.createElement('span');badge.className='badge '+badgeClass(curState);
+          badge.textContent=curState||'상태없음';
+          head.appendChild(name);head.appendChild(badge);
+          card.appendChild(head);
+
+          const memoTxt=(d.memo||"").trim();
+          if(memoTxt){
+            const memo=document.createElement('div');memo.className='memo show';
+            memo.textContent=memoTxt.length>140?memoTxt.slice(0,137)+'…':memoTxt;
+            card.appendChild(memo);
+          }
+
+          const meta=document.createElement('div');meta.className='meta';
+          meta.dataset.updated=d.updatedAt||0;
+          meta.textContent=d.updatedAt?`업데이트: ${relTime(d.updatedAt)} (${formatKTime(d.updatedAt)})`:'';
+          card.appendChild(meta);
+
+          const actions=document.createElement('div');actions.className='actions';
+          const callBtn=document.createElement('button');callBtn.className='btn';callBtn.textContent='📣 콜요청하기';
+          const cancelBtn=document.createElement('button');cancelBtn.className='btn ghost';cancelBtn.textContent='콜요청취소';
+          callBtn.onclick=()=> requireLoginThen(()=>updateCase(d.id,{callRequested:true,callRequestedAt:Date.now()}));
+          cancelBtn.onclick=()=> requireLoginThen(()=>updateCase(d.id,{callRequested:false}));
+          actions.appendChild(callBtn);actions.appendChild(cancelBtn);
+          card.appendChild(actions);
+
+          frag.appendChild(card);
+        });
+
+        grid.innerHTML='';grid.appendChild(frag);
+        if(!inited) inited=true;
+      },(e)=>{conn.textContent='연결 오류';conn.className='pill err';showErr('리스트 구독 실패: '+e.message);});
+
+      function requireLoginThen(fn){
+        if(auth.currentUser){ fn(); return; }
+        showErr('이 작업은 로그인 후 가능합니다. 로그인 창을 열게요.');
+        doLogin();
       }
 
-      ackBtn.onclick   = ()=> acknowledge(pendingReq);
-      bigAck.onclick   = ()=> acknowledge(pendingReq);
+      async function updateCase(id,data){
+        try{
+          await runTransaction(db,async(tx)=>{
+            const ref=doc(db,"cases",id);
+            const snap=await tx.get(ref);
+            const prev=snap.exists()?snap.data():{version:0};
+            tx.set(ref,{...data,updatedAt:Date.now(),version:(prev.version||0)+1},{merge:true});
+          });
+        }catch(e){showErr("저장 실패: "+(e.code||'')+' '+e.message);}
+      }
 
-      // 연결 테스트
-      selftest.onclick = async ()=>{
-        try {
-          await setDoc(doc(db,"healthcheck","reception"), { ping: Date.now() }, { merge:true });
-          conn.textContent="연결 정상"; conn.className="pill ok"; hideErr();
-        } catch(e){ conn.textContent="연결 오류"; conn.className="pill err"; showErr("연결 테스트 실패: "+e.message); }
-      };
-
-      // 상대시간 자동 갱신 시작
-      startTick();
-
-    } catch(e) {
-      showErr("Firebase 초기화 실패: "+(e.message||e));
-      const conn = document.getElementById('conn'); if (conn){ conn.textContent="초기화 오류"; conn.className="pill err"; }
+    }catch(e){
+      conn.textContent='초기화 오류';conn.className='pill err';
+      showErr('Firebase 초기화 실패: '+(e.message||e));
     }
   </script>
 </body>
 </html>
+
 
