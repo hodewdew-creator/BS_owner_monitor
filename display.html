@@ -78,6 +78,29 @@
     .m-actions{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:8px}
     .m-actions .btn{padding:12px 16px; font-size:15px}
     .m-close{position:absolute; top:10px; right:12px; background:transparent; color:#fff; border:0; font-size:24px; cursor:pointer}
+
+    /* 이모지 전용 폰트 고정: 각 OS 컬러 이모지 우선 */
+.emoji{
+  font-family: "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla","Segoe UI Symbol",sans-serif;
+  font-weight: 400; /* 이모지는 굵기 고정이 좋아요 */
+  line-height: 1;
+  vertical-align: -2px; /* 살짝 내려서 정렬 안정 */
+}
+
+/* 모달 제목: 과한 900→800으로 내려 선명도 확보 */
+.modal h2{
+  font-weight: 800;
+  -webkit-font-smoothing: antialiased; /* 크롬/사파리 */
+  -moz-osx-font-smoothing: grayscale;   /* 파폭 */
+  text-rendering: optimizeLegibility;
+}
+
+/* 애니메이션/블러로 인한 흐림 최소화 */
+.modal{
+  will-change: transform;
+  transform: translateZ(0); /* 레이어 승격으로 블러 감소 */
+}
+    
   </style>
 </head>
 <body>
@@ -107,7 +130,7 @@
   <div id="ackOverlay" class="overlay" aria-hidden="true">
     <button id="ackClose" class="m-close" title="닫기">✕</button>
     <div class="modal" role="dialog" aria-modal="true">
-      <h2>📣 대기 환자 확인</h2>
+     <h2><span class="emoji">📣</span> 대기 환자 확인</h2>
       <div id="ackWho" class="who"></div>
       <div class="hint">“확인”을 누르면 리셉에 ‘대기중 전달완료’로 안내됩니다.</div>
       <div class="m-actions">
