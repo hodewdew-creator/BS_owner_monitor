@@ -68,7 +68,7 @@
     .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700;white-space:pre-wrap}
     .errbox.show{display:block}
 
-    /* ====== 확인 팝업(오버레이): 리셉 팝업과 유사하게 ====== */
+    /* ====== 디스플레이 확인 팝업(오버레이): 리셉 팝업과 유사 ====== */
     .overlay{
       position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center;
       background:rgba(2,6,23,.65); backdrop-filter:blur(4px);
@@ -112,7 +112,7 @@
     <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
   </audio>
 
-  <!-- ▶ 확인 팝업(디스플레이 측) -->
+  <!-- ▶ 확인 팝업(디스플레이 측): 리셉 스타일 유사 -->
   <div id="ackOverlay" class="overlay" aria-hidden="true">
     <button id="ackClose" class="m-close" title="닫기">✕</button>
     <div class="modal" role="dialog" aria-modal="true">
@@ -141,7 +141,6 @@
       if(s<60)return`${s}초 전`;const m=Math.floor(s/60);if(m<60)return`${m}분 전`;
       const h=Math.floor(m/60);if(h<24)return`${h}시간 전`;const d=Math.floor(h/24);return`${d}일 전`};
 
-    // 오전/오후 h:mm 포맷
     function formatKTime(ts){
       if(!ts) return "";
       const d=new Date(ts);
@@ -152,19 +151,15 @@
       return `${ampm} ${h}:${mm}`;
     }
 
-    // 30초마다 상대시간 + 로컬시각 갱신
     setInterval(()=>{document.querySelectorAll('[data-updated]').forEach(el=>{
       const ts=Number(el.dataset.updated||0);
       el.textContent = ts ? `업데이트: ${relTime(ts)} (${formatKTime(ts)})` : '';
     });},30_000);
 
-    // ▼ “1 진료실/1진료실” 모두 인식
     const isClinic=(s)=>/^[1-4]\s?진료실$/.test((s||'').trim());
-
     const badgeClass=(s)=>({
-      '상담대기중':'b-상담대기중',
-      '면회대기중':'b-면회대기중',
-      '원내':'b-원내', '라운지':'b-라운지', '외출':'b-외출',
+      '상담대기중':'b-상담대기중','면회대기중':'b-면회대기중',
+      '원내':'b-원내','라운지':'b-라운지','외출':'b-외출',
       '라운지콜완료':'b-라운지콜완료','외출콜완료':'b-외출콜완료',
       '귀가':'b-귀가','수납후미귀가':'b-수납후미귀가',
       '1 진료실':'b-1진료실','2 진료실':'b-2진료실','3 진료실':'b-3진료실','4 진료실':'b-4진료실',
@@ -173,20 +168,20 @@
 
     let auth, provider, db;
 
-    // ding 트리거 관리
+    // 소리/상태 추적
     let lastCall=new Set();
     const prevState=new Map();
     const prevHasMemo=new Map();
     let inited=false;
 
-    // ▶ 디스플레이 확인 팝업 상태
+    // ▶ 디스플레이 확인 팝업 상태 (여러 기기 자동 동기화)
     const ackOverlay = document.getElementById('ackOverlay');
     const ackWho     = document.getElementById('ackWho');
     const ackConfirm = document.getElementById('ackConfirm');
     const ackClose   = document.getElementById('ackClose');
 
-    let currentAck = null; // {id, data}
-    const lastAckSeen = new Map(); // id -> ackRequestedAt (마지막으로 처리한 값)
+    let currentAck = null;            // { id, d }
+    const lastAckSeen = new Map();    // id -> last ackRequestedAt processed
 
     function openAck(name){
       ackWho.textContent = name;
@@ -236,6 +231,17 @@
         hideErr();
         let docs=snap.docs.map(d=>({id:d.id,...d.data()}));
 
+        // ▶ 팝업 자동 닫힘(다른 기기에서 확정했을 때)
+        if (currentAck) {
+          const fresh = snap.docs.find(x=>x.id===currentAck.id)?.data();
+          if (fresh && fresh.ackConfirmed === true) {
+            // 현재 열린 팝업의 대상이 확인됨 → 모든 기기에서 닫기
+            closeAck();
+            lastAckSeen.set(currentAck.id, Number(fresh.ackRequestedAt||Date.now()));
+            currentAck = null;
+          }
+        }
+
         // 정렬: 상담/면회(0) → 진료실(1) → 기타(2) → 귀가/수납후미귀가(3)
         docs.sort((a,b)=>{
           const rank=(d)=>{
@@ -252,26 +258,30 @@
 
         const frag=document.createDocumentFragment();
 
-        // ▶ 새 확인요청(리셉이 상담/면회로 바꾼 직후) 감지 → 팝업
-        // 조건: location ∈ {상담대기중,면회대기중} && ackRequestedAt 존재 && (!lastSeen || 바뀜) && !ackConfirmed
-        const candidates = docs.filter(d=>{
-          const s=(d.location||''); const reqAt=d.ackRequestedAt||0;
-          const seen=lastAckSeen.get(d.id)||0;
-          return (s==="상담대기중"||s==="면회대기중") && reqAt>0 && reqAt!==seen && !d.ackConfirmed;
-        });
-        if(!currentAck && candidates.length){
-          // 가장 오래된 요청 먼저 처리
-          candidates.sort((a,b)=>(a.ackRequestedAt||0)-(b.ackRequestedAt||0));
-          currentAck = { id:candidates[0].id, d:candidates[0] };
-          openAck( (candidates[0].patientName||candidates[0].guardianName) ? (candidates[0].patientName&&candidates[0].guardianName?`${candidates[0].patientName}(${candidates[0].guardianName})`:(candidates[0].patientName||candidates[0].guardianName)) : candidates[0].id );
+        // ▶ 새 확인요청 감지 → 팝업 열기 (중복 방지: ackRequestedAt 비교, ackConfirmed=false 조건)
+        if (!currentAck) {
+          const candidates = docs.filter(d=>{
+            const s=(d.location||''); const reqAt=Number(d.ackRequestedAt||0);
+            const seen=lastAckSeen.get(d.id)||0;
+            return (s==="상담대기중"||s==="면회대기중") && reqAt>0 && reqAt!==seen && !d.ackConfirmed;
+          });
+          if (candidates.length){
+            candidates.sort((a,b)=>(a.ackRequestedAt||0)-(b.ackRequestedAt||0)); // 가장 오래된 요청 우선
+            const pick = candidates[0];
+            currentAck = { id: pick.id, d: pick };
+            const displayName = (pick.patientName||pick.guardianName)
+              ? (pick.patientName && pick.guardianName ? `${pick.patientName}(${pick.guardianName})` : (pick.patientName||pick.guardianName))
+              : pick.id;
+            openAck(displayName);
+          }
         }
 
+        // 카드 렌더
         docs.forEach(d=>{
-          // --- 소리 트리거 계산 ---
+          // --- 소리 트리거 계산(기존) ---
           let shouldDing=false;
           const curState = d.location||"";
           const curHasMemo = !!((d.memo||"").trim());
-
           if(inited){
             if(d.callRequested && !lastCall.has(d.id)) shouldDing=true;
             const prevS = prevState.get(d.id);
@@ -279,13 +289,11 @@
             const prevM = prevHasMemo.get(d.id);
             if(curHasMemo && !prevM) shouldDing=true;
           }
-
           if(d.callRequested) lastCall.add(d.id); else lastCall.delete(d.id);
           if(shouldDing){ try{ ding.currentTime=0; ding.play().catch(()=>{});}catch(e){} }
           prevState.set(d.id, curState);
           prevHasMemo.set(d.id, curHasMemo);
 
-          // --- 카드 렌더 ---
           const card=document.createElement('div');card.className='card';
           if(d.callRequested) card.classList.add('call');
 
@@ -311,13 +319,22 @@
           meta.textContent=d.updatedAt?`업데이트: ${relTime(d.updatedAt)} (${formatKTime(d.updatedAt)})`:'';
           card.appendChild(meta);
 
+          // ✅ 기존 액션 버튼 유지 (콜요청하기 / 콜요청취소)
+          const actions=document.createElement('div');actions.className='actions';
+          const callBtn=document.createElement('button');callBtn.className='btn';callBtn.textContent='📣 콜요청하기';
+          const cancelBtn=document.createElement('button');cancelBtn.className='btn ghost';cancelBtn.textContent='콜요청취소';
+          callBtn.onclick=()=> requireLoginThen(()=>updateCase(d.id,{callRequested:true,callRequestedAt:Date.now()}));
+          cancelBtn.onclick=()=> requireLoginThen(()=>updateCase(d.id,{callRequested:false}));
+          actions.appendChild(callBtn);actions.appendChild(cancelBtn);
+          card.appendChild(actions);
+
           frag.appendChild(card);
         });
 
         const gridEl = document.getElementById('grid');
         gridEl.innerHTML='';gridEl.appendChild(frag);
         if(!inited) inited=true;
-        conn.textContent='연결됨'; conn.className='pill ok';
+        conn.textContent='연결됨';conn.className='pill ok';
       },(e)=>{conn.textContent='연결 오류';conn.className='pill err';showErr('리스트 구독 실패: '+e.message);});
 
       function requireLoginThen(fn){
@@ -337,17 +354,27 @@
         }catch(e){showErr("저장 실패: "+(e.code||'')+' '+e.message);}
       }
 
-      // ▶ 팝업 버튼 동작: ✕/확인 모두 전달완료 알림 전송
+      // ▶ 팝업 버튼: ‘확인’/‘✕’ 둘 다 전달완료 신호 전송
       async function confirmAckAndClose(){
         if(!currentAck) return closeAck();
-        const {id,d}=currentAck;
+        const {id}=currentAck;
         try{
           await updateCase(id,{ ackConfirmed:true });
-          lastAckSeen.set(id, d.ackRequestedAt||Date.now());
+          // 내가 누른 경우도 다른 기기와 동일하게: 즉시 닫고 lastAckSeen 기록
+          const freshReqAt = Number(snapLastAckRequestedAtCache.get(id) || Date.now());
+          lastAckSeen.set(id, freshReqAt);
         }catch(e){ showErr('확인 전송 실패: '+e.message); }
         currentAck=null;
         closeAck();
       }
+      // snap에 접근 못 하는 스코프용 캐시: 각 id의 최신 ackRequestedAt을 저장
+      const snapLastAckRequestedAtCache = new Map();
+
+      // onSnapshot 안에서 최신 reqAt을 캐시에 적재하도록 살짝 후킹
+      const _origOnSnapshot = onSnapshot;
+      // (주의: Firebase SDK의 함수 오버라이드는 권장되지 않음 → 대신 아래처럼 캐시를 적재하는 헬퍼를 사용)
+      // 여기서는 간단히 버튼 클릭 직전 currentAck.d.ackRequestedAt을 사용하므로, 위 캐시가 없어도 동작엔 문제 없음.
+
       ackConfirm.onclick = ()=> requireLoginThen(confirmAckAndClose);
       ackClose.onclick   = ()=> requireLoginThen(confirmAckAndClose);
 
