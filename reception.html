@@ -36,27 +36,12 @@
     label{display:block; font-size:12px; color:var(--muted); margin:0 0 4px 2px}
 
     .inputs-wrap{
-      display:grid;
-      grid-template-columns: 120px 120px 100px;
-      gap:12px;
-      align-items:end;
+      display:grid; grid-template-columns: 120px 120px 100px; gap:12px; align-items:end;
     }
     .inputs-wrap input{
-      width:100%;
-      min-width:0;
-      padding:8px 10px;
-      border:1px solid #cbd5e1;
-      border-radius:10px;
-      font-size:15px;
-      background:#fff;
-      box-sizing:border-box;
+      width:100%; min-width:0; padding:8px 10px; border:1px solid #cbd5e1; border-radius:10px; font-size:15px; background:#fff; box-sizing:border-box;
     }
-    #addCase{
-      width:100%;
-      max-width:unset;
-      white-space:nowrap;
-      box-sizing:border-box;
-    }
+    #addCase{ width:100%; max-width:unset; white-space:nowrap; box-sizing:border-box; }
 
     /* 버튼 */
     .btn{cursor:pointer;border:1px solid #d1d5db;border-radius:10px;padding:12px 14px;font-weight:700;background:var(--btn);color:var(--btn-ink);white-space:nowrap;transition:.15s}
@@ -136,10 +121,13 @@
 
     <div id="err" class="errbox"></div>
 
-    <!-- 작은 배너 알림 -->
+    <!-- 작은 배너 알림 (기존 콜요청) -->
     <div id="alertBox" class="alert">📣 처치실에서 <span id="alertWho"></span> 콜 요청!
       <button id="ack" class="btn ok" style="margin-left:8px">처리완료</button>
     </div>
+
+    <!-- ▶ 전달완료 알림(작은 배너 동일 스타일) -->
+    <div id="relayBox" class="alert" style="display:none"></div>
 
     <!-- === 큰 팝업 오버레이 === -->
     <div id="bigOverlay" class="overlay" aria-hidden="true">
@@ -286,39 +274,32 @@
         }
       });
 
-      // 신규 환자 추가 - 환자리스트에서도 추가된 환자로 선택하도록 수정
+      // 신규 환자 추가
       const patientName = document.getElementById('patientName');
       const guardianName= document.getElementById('guardianName');
       const addCaseBtn  = document.getElementById('addCase');
-addCaseBtn.onclick = async ()=>{
-  const pn = patientName.value.trim();
-  const gn = guardianName.value.trim();
-  if (!pn && !gn) return showErr("이름을 입력하세요.");
-  try {
-    const ref = await addDoc(collection(db,"cases"),{   // ← ref 받아오기
-      patientName: pn, guardianName: gn,
-      location:"원내",
-      createdAt: Date.now(), updatedAt: Date.now(),
-      version:1, callRequested:false,
-      memo:""
-    });
+      addCaseBtn.onclick = async ()=>{
+        const pn = patientName.value.trim();
+        const gn = guardianName.value.trim();
+        if (!pn && !gn) return showErr("이름을 입력하세요.");
+        try {
+          const ref = await addDoc(collection(db,"cases"),{
+            patientName: pn, guardianName: gn,
+            location:"원내",
+            createdAt: Date.now(), updatedAt: Date.now(),
+            version:1, callRequested:false,
+            memo:"",
+            // 새 필드 기본값
+            ackRequestedAt: 0,
+            ackConfirmed: false
+          });
+          // 입력칸 초기화 + 새 환자 선택
+          patientName.value = ""; guardianName.value = ""; hideErr();
+          selectedId = ref.id;
+        } catch(e){ showErr("환자 추가 실패: "+e.message); }
+      };
 
-    // 입력칸 초기화
-    patientName.value = "";
-    guardianName.value = "";
-    hideErr();
-
-    // ✅ 새로 추가한 환자를 자동 선택
-    selectedId = ref.id;
-
-  } catch(e){ 
-    showErr("환자 추가 실패: "+e.message); 
-  }
-};
-
-
-
-      // 상태 버튼: 재정리 (요청안 반영)
+      // 상태 버튼
       const row1 = document.getElementById('row1');
       const row2 = document.getElementById('row2');
       const row3 = document.getElementById('row3');
@@ -330,23 +311,14 @@ addCaseBtn.onclick = async ()=>{
       function makeBtn(text, onClick, cls="btn"){
         const b = document.createElement('button');
         b.className = cls; b.textContent = text; b.onclick = onClick;
-
-        // 상담대기중 / 면회대기중 버튼은 빨간 글씨
-        if (text === "상담대기중" || text === "면회대기중") {
-          b.style.color = "#dc2626";
-          b.style.fontWeight = "900";
-        }
+        if (text === "상담대기중" || text === "면회대기중") { b.style.color = "#dc2626"; b.style.fontWeight = "900"; }
         return b;
       }
-
       ROW1.forEach(s=> row1.appendChild(makeBtn(s, ()=>applyGlobalState(s))));
       ROW2.forEach(s=> row2.appendChild(makeBtn(s, ()=>applyGlobalState(s))));
       ROW3.forEach(s=>{
-        if (s === "삭제") {
-          row3.appendChild(makeBtn(s, onDelete, "btn dark"));
-        } else {
-          row3.appendChild(makeBtn(s, ()=>applyGlobalState(s)));
-        }
+        if (s === "삭제") row3.appendChild(makeBtn(s, onDelete, "btn dark"));
+        else row3.appendChild(makeBtn(s, ()=>applyGlobalState(s)));
       });
 
       // 메모 저장
@@ -358,7 +330,7 @@ addCaseBtn.onclick = async ()=>{
         await updateCase(selectedId, { memo: text });
       };
 
-      let selectedId = null; // 선택된 환자
+      let selectedId = null; // 현재 선택
       const caseList = document.getElementById('caseList');
 
       function prettyName(d, id){
@@ -373,8 +345,8 @@ addCaseBtn.onclick = async ()=>{
         if (s==="원내" || s==="라운지") return "#d97706";
         if (s==="외출") return "#0284c7";
         if (s==="라운지콜완료" || s==="외출콜완료") return "#16a34a";
-        if (s==="1 진료실" || s==="2 진료실" || s==="3 진료실" || s==="4 진료실") return "#2b5fa3";     // 공백 포함 케이스
-        if (s==="1진료실" || s==="2진료실" || s==="3진료실" || s==="4진료실") return "#2b5fa3";         // 공백 없는 케이스
+        if (s==="1 진료실" || s==="2 진료실" || s==="3 진료실" || s==="4 진료실") return "#2b5fa3";
+        if (s==="1진료실" || s==="2진료실" || s==="3진료실" || s==="4진료실") return "#2b5fa3";
         if (s==="귀가" || s==="수납후미귀가") return "#64748b";
         return "";
       }
@@ -382,10 +354,7 @@ addCaseBtn.onclick = async ()=>{
       function renderLine(id, d){
         const line = document.createElement('div'); line.className = 'line'; line.dataset.id = id;
 
-        const name = document.createElement('div');
-        name.className = 'name';
-        name.textContent = prettyName(d, id);
-
+        const name = document.createElement('div'); name.className = 'name'; name.textContent = prettyName(d, id);
         if (d.memo && d.memo.trim() !== "") {
           const memoIcon = document.createElement('span');
           memoIcon.textContent = "📝";
@@ -399,14 +368,9 @@ addCaseBtn.onclick = async ()=>{
         const state= document.createElement('div'); state.className='state'; state.textContent = d.location || '';
         const color = colorForState(d.location||""); if (color) state.style.color = color;
 
-        const upd  = document.createElement('div'); 
-        upd.className='updated';
-        if (d.updatedAt){
-          upd.dataset.ts = String(d.updatedAt);
-          upd.innerHTML = renderUpdatedText(d.updatedAt);
-        } else {
-          upd.textContent = '';
-        }
+        const upd  = document.createElement('div');  upd.className='updated';
+        if (d.updatedAt){ upd.dataset.ts = String(d.updatedAt); upd.innerHTML = renderUpdatedText(d.updatedAt); }
+        else { upd.textContent = ''; }
 
         line.appendChild(name); line.appendChild(state); line.appendChild(upd);
         line.onclick = ()=>{
@@ -437,7 +401,12 @@ addCaseBtn.onclick = async ()=>{
           const yes = confirm("리스트에서 삭제할까요? (예: 문서를 삭제 / 아니오: 상태만 '귀가'로 표시)");
           if (yes) { return onDelete(); }
         }
-        await updateCase(selectedId, { location: state, callRequested:false });
+        // ▶ 상담/면회 세팅 시: 디스플레이에 확인 팝업 띄우기 위한 트리거 필드 기록
+        if (state==="상담대기중" || state==="면회대기중") {
+          await updateCase(selectedId, { location: state, callRequested:false, ackRequestedAt: Date.now(), ackConfirmed:false });
+        } else {
+          await updateCase(selectedId, { location: state, callRequested:false });
+        }
       }
 
       async function onDelete(){
@@ -462,6 +431,8 @@ addCaseBtn.onclick = async ()=>{
       const bigAck     = document.getElementById('bigAck');
       const bigClose   = document.getElementById('bigClose');
       const bell       = document.getElementById('bell');
+
+      const relayBox   = document.getElementById('relayBox'); // ▶ 전달완료 배너
 
       let lastAlertedId = null;
       let pendingReq = null;
@@ -497,8 +468,19 @@ addCaseBtn.onclick = async ()=>{
           caseList.appendChild(el);
           if (!firstId) firstId = docu.id;
           if (docu.id === selectedId) selectedDocData = d;
-          if (d.callRequested) {
-            anyReq = { id: docu.id, d };
+          if (d.callRequested) anyReq = { id: docu.id, d };
+
+          // ▶ 디스플레이에서 확인 완료 시(ackConfirmed:true) → 리셉에 전달완료 배너 + 사운드
+          if (d.ackConfirmed === true) {
+            const name = prettyName(d, docu.id);
+            relayBox.textContent = `📣 '${name}' 대기중 전달완료`;
+            relayBox.classList.add('show');
+            try { bell.currentTime = 0; bell.play().catch(()=>{}); } catch(e){}
+            // 1.5초 뒤 자동 숨김 + 서버값 리셋(false) — 중복 알림 방지(리셋)
+            setTimeout(async ()=>{
+              relayBox.classList.remove('show');
+              await updateCase(docu.id, { ackConfirmed:false });
+            }, 1500);
           }
         });
 
@@ -510,20 +492,19 @@ addCaseBtn.onclick = async ()=>{
           const firstData = snap.docs.find(x=>x.id===firstId)?.data();
           memoInput.value = (firstData && firstData.memo) ? firstData.memo : "";
         }
-
         if (selectedId && selectedDocData) {
           memoInput.value = selectedDocData.memo || "";
         }
-  // ✅ 여기 추가된 부분: 선택 라인 강조 처리
-  if (selectedId) {
-    const selEl = caseList.querySelector('[data-id="'+selectedId+'"]');
-    if (selEl) {
-      [...caseList.children].forEach(el=> el.classList.remove('select'));
-      selEl.classList.add('select');
-    }
-  }
-        
-        // 작은 배너
+        // 선택 라인 강조 유지
+        if (selectedId) {
+          const selEl = caseList.querySelector('[data-id="'+selectedId+'"]');
+          if (selEl) {
+            [...caseList.children].forEach(el=> el.classList.remove('select'));
+            selEl.classList.add('select');
+          }
+        }
+
+        // 기존 작은 배너 (콜요청)
         if (anyReq) {
           const d = anyReq.d;
           alertWho.textContent = prettyName(d, anyReq.id);
@@ -532,7 +513,7 @@ addCaseBtn.onclick = async ()=>{
           alertBox.classList.remove('show');
         }
 
-        // 큰 팝업 + 사운드 (새로운 요청일 때만)
+        // 큰 팝업 + 사운드 (새로운 콜요청일 때만)
         if (anyReq && anyReq.id !== lastAlertedId) {
           pendingReq = anyReq;
           showBigOverlay(prettyName(anyReq.d, anyReq.id));
@@ -548,7 +529,7 @@ addCaseBtn.onclick = async ()=>{
         conn.textContent="연결됨"; conn.className="pill ok";
       }, (e)=>{ conn.textContent="연결 오류"; conn.className="pill err"; showErr("리스트 구독 실패: "+e.message); });
 
-      // 처리완료
+      // 처리완료 (기존 콜요청 플로우)
       async function acknowledge(req){
         if (!req) return;
         const d = req.d;
@@ -556,7 +537,6 @@ addCaseBtn.onclick = async ()=>{
         await updateCase(req.id, { callRequested:false, location:newState });
         hideBigOverlay();
       }
-
       ackBtn.onclick   = ()=> acknowledge(pendingReq);
       bigAck.onclick   = ()=> acknowledge(pendingReq);
 
@@ -578,5 +558,3 @@ addCaseBtn.onclick = async ()=>{
   </script>
 </body>
 </html>
-
-
