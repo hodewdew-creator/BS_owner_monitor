@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
-  <title>BS 보호자 모니터 (내부용) </title>
+  <title>BS 보호자 모니터 (내부용)</title>
   <style>
     :root{
       --bg:#0b1220; --fg:#ffffff; --muted:#9ca3af;
@@ -49,7 +49,6 @@
     .b-외출{background:#C084FC; color:#111; border-color:transparent}
     .b-라운지콜완료,.b-외출콜완료{background:#34D399; border-color:transparent}
     .b-귀가,.b-수납후미귀가{background:#9CA3AF; color:#111; border-color:transparent}
-    /* 진료실 배지 */
     .b-1진료실,.b-2진료실,.b-3진료실,.b-4진료실{ background:#2b5fa3; color:#fff; border-color:transparent; }
 
     .memo{
@@ -68,18 +67,10 @@
     .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700;white-space:pre-wrap}
     .errbox.show{display:block}
 
-    /* ====== 디스플레이 확인 팝업(오버레이): 리셉 팝업과 유사 ====== */
-    .overlay{
-      position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center;
-      background:rgba(2,6,23,.65); backdrop-filter:blur(4px);
-    }
+    /* ====== 확인 팝업(오버레이): 리셉 팝업과 유사 ====== */
+    .overlay{position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center; background:rgba(2,6,23,.65); backdrop-filter:blur(4px)}
     .overlay.show{display:flex}
-    .modal{
-      width:min(720px,92vw);
-      background:#ffffff; color:#0f172a; border-radius:16px; border:3px solid #ef4444;
-      box-shadow:0 20px 60px rgba(0,0,0,.35);
-      padding:22px; text-align:center; animation:flash .9s ease-in-out 1;
-    }
+    .modal{width:min(720px,92vw); background:#fff; color:#0f172a; border-radius:16px; border:3px solid #ef4444; box-shadow:0 20px 60px rgba(0,0,0,.35); padding:22px; text-align:center; animation:flash .9s ease-in-out 1}
     @keyframes flash{0%{transform:scale(.98)}100%{transform:scale(1)}}
     .modal h2{margin:0 0 6px; font-size:28px; font-weight:900}
     .who{font-size:40px; font-weight:900; margin:6px 0 2px}
@@ -93,7 +84,7 @@
   <div class="topbar">
     <div class="brandwrap">
       <img class="logo" src="image-512.png" alt="BS Logo" />
-      <div class="brand">BS 보호자 모니터 (내부용) </div>
+      <div class="brand">BS 보호자 모니터 (내부용)</div>
     </div>
     <div class="right">
       <span id="whoami" class="whoami"></span>
@@ -112,7 +103,7 @@
     <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
   </audio>
 
-  <!-- ▶ 확인 팝업(디스플레이 측): 리셉 스타일 유사 -->
+  <!-- ▶ 확인 팝업(디스플레이 측) -->
   <div id="ackOverlay" class="overlay" aria-hidden="true">
     <button id="ackClose" class="m-close" title="닫기">✕</button>
     <div class="modal" role="dialog" aria-modal="true">
@@ -140,16 +131,7 @@
     const relTime=(ts)=>{if(!ts)return "";const s=Math.floor((Date.now()-ts)/1000);
       if(s<60)return`${s}초 전`;const m=Math.floor(s/60);if(m<60)return`${m}분 전`;
       const h=Math.floor(m/60);if(h<24)return`${h}시간 전`;const d=Math.floor(h/24);return`${d}일 전`};
-
-    function formatKTime(ts){
-      if(!ts) return "";
-      const d=new Date(ts);
-      let h=d.getHours(), m=d.getMinutes();
-      const ampm = h<12 ? "오전" : "오후";
-      h = h%12 || 12;
-      const mm = String(m).padStart(2,"0");
-      return `${ampm} ${h}:${mm}`;
-    }
+    const formatKTime=(ts)=>{if(!ts)return"";const d=new Date(ts);let h=d.getHours();const m=String(d.getMinutes()).padStart(2,"0");const ap=h<12?"오전":"오후";h=h%12||12;return`${ap} ${h}:${m}`};
 
     setInterval(()=>{document.querySelectorAll('[data-updated]').forEach(el=>{
       const ts=Number(el.dataset.updated||0);
@@ -168,22 +150,19 @@
 
     let auth, provider, db;
 
-    // 소리/상태 추적
-    let lastCall=new Set();
-    const prevState=new Map();
-    const prevHasMemo=new Map();
-    let inited=false;
-
-    // ▶ 디스플레이 확인 팝업 상태 (여러 기기 자동 동기화)
+    // ===== 팝업/상태 추적 =====
     const ackOverlay = document.getElementById('ackOverlay');
     const ackWho     = document.getElementById('ackWho');
     const ackConfirm = document.getElementById('ackConfirm');
     const ackClose   = document.getElementById('ackClose');
 
-    let currentAck = null;            // { id, d }
-    const lastAckSeen = new Map();    // id -> last ackRequestedAt processed
+    let modalTargetId = null;            // 현재 팝업 대상 문서 id
+    let modalTargetReqAt = 0;            // 해당 요청의 ackRequestedAt
+    const lastSeenReqAt = new Map();     // id -> 마지막으로 처리한 ackRequestedAt
 
-    function openAck(name){
+    function openAck(name, id, reqAt){
+      modalTargetId = id;
+      modalTargetReqAt = Number(reqAt||0);
       ackWho.textContent = name;
       ackOverlay.classList.add('show');
       ackOverlay.setAttribute('aria-hidden','false');
@@ -192,6 +171,7 @@
     function closeAck(){
       ackOverlay.classList.remove('show');
       ackOverlay.setAttribute('aria-hidden','true');
+      // 주의: lastSeenReqAt 갱신은 '성공적으로 처리됐을 때'만 한다 (onSnapshot에서 또는 confirm 성공시)
     }
 
     try{
@@ -221,7 +201,6 @@
       }
       loginBtn.onclick=doLogin;
       logoutBtn.onclick=async()=>{ try{ await signOut(auth); }catch(e){ showErr('로그아웃 실패: '+e.message);} };
-
       onAuthStateChanged(auth,(user)=>{
         if(user){ whoami.textContent=user.email; logoutBtn.style.display=''; loginBtn.style.display='none'; }
         else{ whoami.textContent=''; logoutBtn.style.display='none'; loginBtn.style.display=''; }
@@ -229,25 +208,51 @@
 
       onSnapshot(query(collection(db,"cases"),orderBy("createdAt","desc")),(snap)=>{
         hideErr();
-        let docs=snap.docs.map(d=>({id:d.id,...d.data()}));
 
-        // ▶ 팝업 자동 닫힘(다른 기기에서 확정했을 때)
-        if (currentAck) {
-          const fresh = snap.docs.find(x=>x.id===currentAck.id)?.data();
-          if (fresh && fresh.ackConfirmed === true) {
-            // 현재 열린 팝업의 대상이 확인됨 → 모든 기기에서 닫기
-            closeAck();
-            lastAckSeen.set(currentAck.id, Number(fresh.ackRequestedAt||Date.now()));
-            currentAck = null;
+        // === 0) 스냅 최신값 맵 구성 ===
+        const docs = snap.docs.map(x=>({ id:x.id, ...x.data() }));
+        const byId = new Map(docs.map(d=>[d.id,d]));
+
+        // === 1) "다른 기기에서 확인" 자동 닫힘 ===
+        if (modalTargetId) {
+          const fresh = byId.get(modalTargetId);
+          if (fresh) {
+            const reqAt = Number(fresh.ackRequestedAt||0);
+            // 누군가 확인해서 ackConfirmed:true 가 되면 → 모든 기기에서 닫기 + lastSeen 갱신
+            if (fresh.ackConfirmed === true) {
+              lastSeenReqAt.set(modalTargetId, reqAt);
+              closeAck();
+              modalTargetId = null;
+            }
+            // (참고) 리셉이 false로 리셋하기 전에 닫혔으니, 같은 reqAt은 다시 열지 않음
           }
         }
 
+        // === 2) 새 요청 탐지 → 팝업 오픈 (조건 엄격화) ===
+        if (!modalTargetId) {
+          // 상담/면회 대기 + ackConfirmed:false + (reqAt > lastSeen)
+          const cands = docs.filter(d=>{
+            const s=d.location||'';
+            const reqAt = Number(d.ackRequestedAt||0);
+            const seen  = lastSeenReqAt.get(d.id)||0;
+            return (s==="상담대기중"||s==="면회대기중") && reqAt>0 && !d.ackConfirmed && reqAt>seen;
+          });
+          if (cands.length){
+            cands.sort((a,b)=>(a.ackRequestedAt||0)-(b.ackRequestedAt||0)); // 오래된 것 우선
+            const p = cands[0];
+            const nm = (p.patientName||p.guardianName)
+              ? (p.patientName && p.guardianName ? `${p.patientName}(${p.guardianName})` : (p.patientName||p.guardianName)) : p.id;
+            openAck(nm, p.id, p.ackRequestedAt);
+          }
+        }
+
+        // === 3) 카드 렌더 (기존 기능 보존) ===
         // 정렬: 상담/면회(0) → 진료실(1) → 기타(2) → 귀가/수납후미귀가(3)
         docs.sort((a,b)=>{
           const rank=(d)=>{
             const s=d.location||'';
             if(s==="상담대기중" || s==="면회대기중") return 0;
-            if(isClinic(s)) return 1;
+            if(/^[1-4]\s?진료실$/.test(s)) return 1;
             if(s==="귀가"||s==="수납후미귀가") return 3;
             return 2;
           };
@@ -257,42 +262,24 @@
         });
 
         const frag=document.createDocumentFragment();
+        // 소리 트리거 추적
+        if(!window._prevState){ window._prevState=new Map(); window._prevHasMemo=new Map(); window._lastCall=new Set(); window._inited=false; }
+        const prevState=window._prevState, prevHasMemo=window._prevHasMemo, lastCall=window._lastCall, inited=window._inited;
 
-        // ▶ 새 확인요청 감지 → 팝업 열기 (중복 방지: ackRequestedAt 비교, ackConfirmed=false 조건)
-        if (!currentAck) {
-          const candidates = docs.filter(d=>{
-            const s=(d.location||''); const reqAt=Number(d.ackRequestedAt||0);
-            const seen=lastAckSeen.get(d.id)||0;
-            return (s==="상담대기중"||s==="면회대기중") && reqAt>0 && reqAt!==seen && !d.ackConfirmed;
-          });
-          if (candidates.length){
-            candidates.sort((a,b)=>(a.ackRequestedAt||0)-(b.ackRequestedAt||0)); // 가장 오래된 요청 우선
-            const pick = candidates[0];
-            currentAck = { id: pick.id, d: pick };
-            const displayName = (pick.patientName||pick.guardianName)
-              ? (pick.patientName && pick.guardianName ? `${pick.patientName}(${pick.guardianName})` : (pick.patientName||pick.guardianName))
-              : pick.id;
-            openAck(displayName);
-          }
-        }
-
-        // 카드 렌더
         docs.forEach(d=>{
-          // --- 소리 트리거 계산(기존) ---
           let shouldDing=false;
-          const curState = d.location||"";
-          const curHasMemo = !!((d.memo||"").trim());
+          const curState=d.location||"";
+          const curHasMemo=!!((d.memo||"").trim());
           if(inited){
             if(d.callRequested && !lastCall.has(d.id)) shouldDing=true;
-            const prevS = prevState.get(d.id);
-            if((curState==="상담대기중" || curState==="면회대기중") && curState!==prevS) shouldDing=true;
-            const prevM = prevHasMemo.get(d.id);
-            if(curHasMemo && !prevM) shouldDing=true;
+            const ps=prevState.get(d.id);
+            if((curState==="상담대기중"||curState==="면회대기중") && curState!==ps) shouldDing=true;
+            const pm=prevHasMemo.get(d.id);
+            if(curHasMemo && !pm) shouldDing=true;
           }
           if(d.callRequested) lastCall.add(d.id); else lastCall.delete(d.id);
           if(shouldDing){ try{ ding.currentTime=0; ding.play().catch(()=>{});}catch(e){} }
-          prevState.set(d.id, curState);
-          prevHasMemo.set(d.id, curHasMemo);
+          prevState.set(d.id,curState); prevHasMemo.set(d.id,curHasMemo);
 
           const card=document.createElement('div');card.className='card';
           if(d.callRequested) card.classList.add('call');
@@ -302,9 +289,8 @@
           name.textContent=(d.patientName||d.guardianName)
             ?(d.patientName&&d.guardianName?`${d.patientName}(${d.guardianName})`:(d.patientName||d.guardianName))
             :d.id;
-          const badge=document.createElement('span');badge.className='badge '+badgeClass(curState);
-          badge.textContent=curState||'상태없음';
-          head.appendChild(name);head.appendChild(badge);
+          const badge=document.createElement('span');badge.className='badge '+(badgeClass(curState)||''); badge.textContent=curState||'상태없음';
+          head.appendChild(name); head.appendChild(badge);
           card.appendChild(head);
 
           const memoTxt=(d.memo||"").trim();
@@ -319,7 +305,7 @@
           meta.textContent=d.updatedAt?`업데이트: ${relTime(d.updatedAt)} (${formatKTime(d.updatedAt)})`:'';
           card.appendChild(meta);
 
-          // ✅ 기존 액션 버튼 유지 (콜요청하기 / 콜요청취소)
+          // 기존 액션 버튼 유지
           const actions=document.createElement('div');actions.className='actions';
           const callBtn=document.createElement('button');callBtn.className='btn';callBtn.textContent='📣 콜요청하기';
           const cancelBtn=document.createElement('button');cancelBtn.className='btn ghost';cancelBtn.textContent='콜요청취소';
@@ -330,11 +316,10 @@
 
           frag.appendChild(card);
         });
+        const gridEl=document.getElementById('grid'); gridEl.innerHTML=''; gridEl.appendChild(frag);
+        window._inited=true;
 
-        const gridEl = document.getElementById('grid');
-        gridEl.innerHTML='';gridEl.appendChild(frag);
-        if(!inited) inited=true;
-        conn.textContent='연결됨';conn.className='pill ok';
+        conn.textContent='연결됨'; conn.className='pill ok';
       },(e)=>{conn.textContent='연결 오류';conn.className='pill err';showErr('리스트 구독 실패: '+e.message);});
 
       function requireLoginThen(fn){
@@ -351,30 +336,23 @@
             const prev=snap.exists()?snap.data():{version:0};
             tx.set(ref,{...data,updatedAt:Date.now(),version:(prev.version||0)+1},{merge:true});
           });
-        }catch(e){showErr("저장 실패: "+(e.code||'')+' '+e.message);}
+        }catch(e){ throw e; }
       }
 
-      // ▶ 팝업 버튼: ‘확인’/‘✕’ 둘 다 전달완료 신호 전송
+      // ▶ 팝업 버튼: ‘확인’/‘✕’ — 업데이트 성공 시에만 닫기
       async function confirmAckAndClose(){
-        if(!currentAck) return closeAck();
-        const {id}=currentAck;
+        if(!modalTargetId) return;
         try{
-          await updateCase(id,{ ackConfirmed:true });
-          // 내가 누른 경우도 다른 기기와 동일하게: 즉시 닫고 lastAckSeen 기록
-          const freshReqAt = Number(snapLastAckRequestedAtCache.get(id) || Date.now());
-          lastAckSeen.set(id, freshReqAt);
-        }catch(e){ showErr('확인 전송 실패: '+e.message); }
-        currentAck=null;
-        closeAck();
+          await updateCase(modalTargetId,{ ackConfirmed:true });
+          // 성공 시: 이 요청(reqAt)을 처리 완료로 기록 → 리셋(false) 이후에도 재오픈 방지
+          lastSeenReqAt.set(modalTargetId, modalTargetReqAt||Date.now());
+          closeAck();
+          modalTargetId=null;
+        }catch(e){
+          showErr('확인 전송 실패: '+(e.code||'')+' '+e.message);
+          // 실패하면 팝업을 닫지 않는다(권한 문제 등).
+        }
       }
-      // snap에 접근 못 하는 스코프용 캐시: 각 id의 최신 ackRequestedAt을 저장
-      const snapLastAckRequestedAtCache = new Map();
-
-      // onSnapshot 안에서 최신 reqAt을 캐시에 적재하도록 살짝 후킹
-      const _origOnSnapshot = onSnapshot;
-      // (주의: Firebase SDK의 함수 오버라이드는 권장되지 않음 → 대신 아래처럼 캐시를 적재하는 헬퍼를 사용)
-      // 여기서는 간단히 버튼 클릭 직전 currentAck.d.ackRequestedAt을 사용하므로, 위 캐시가 없어도 동작엔 문제 없음.
-
       ackConfirm.onclick = ()=> requireLoginThen(confirmAckAndClose);
       ackClose.onclick   = ()=> requireLoginThen(confirmAckAndClose);
 
