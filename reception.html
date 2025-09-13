@@ -286,25 +286,32 @@
         }
       });
 
-      // 신규 환자 추가
+      // 신규 환자 추가 - 환자리스트에서도 추가된 환자로 선택하도록 수정
       const patientName = document.getElementById('patientName');
       const guardianName= document.getElementById('guardianName');
       const addCaseBtn  = document.getElementById('addCase');
-      addCaseBtn.onclick = async ()=>{
-        const pn = patientName.value.trim();
-        const gn = guardianName.value.trim();
-        if (!pn && !gn) return showErr("이름을 입력하세요.");
-        try {
-          await addDoc(collection(db,"cases"),{
-            patientName: pn, guardianName: gn,
-            location:"원내",
-            createdAt: Date.now(), updatedAt: Date.now(),
-            version:1, callRequested:false,
-            memo:""
-          });
-          patientName.value = ""; guardianName.value = ""; hideErr();
-        } catch(e){ showErr("환자 추가 실패: "+e.message); }
-      };
+addCaseBtn.onclick = async ()=>{
+  const pn = patientName.value.trim();
+  const gn = guardianName.value.trim();
+  if (!pn && !gn) return showErr("이름을 입력하세요.");
+  try {
+    const ref = await addDoc(collection(db,"cases"),{   // ← ref 받아오기
+      patientName: pn, guardianName: gn,
+      location:"원내",
+      createdAt: Date.now(), updatedAt: Date.now(),
+      version:1, callRequested:false,
+      memo:""
+    });
+    patientName.value = ""; 
+    guardianName.value = ""; 
+    hideErr();
+
+    // ✅ 새로 추가한 환자를 자동 선택
+    selectedId = ref.id;
+
+  } catch(e){ showErr("환자 추가 실패: "+e.message); }
+};
+
 
       // 상태 버튼: 재정리 (요청안 반영)
       const row1 = document.getElementById('row1');
