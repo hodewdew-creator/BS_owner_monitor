@@ -302,15 +302,20 @@ addCaseBtn.onclick = async ()=>{
       version:1, callRequested:false,
       memo:""
     });
-    patientName.value = ""; 
-    guardianName.value = ""; 
+
+    // 입력칸 초기화
+    patientName.value = "";
+    guardianName.value = "";
     hideErr();
 
     // ✅ 새로 추가한 환자를 자동 선택
     selectedId = ref.id;
 
-  } catch(e){ showErr("환자 추가 실패: "+e.message); }
+  } catch(e){ 
+    showErr("환자 추가 실패: "+e.message); 
+  }
 };
+
 
 
       // 상태 버튼: 재정리 (요청안 반영)
@@ -509,7 +514,15 @@ addCaseBtn.onclick = async ()=>{
         if (selectedId && selectedDocData) {
           memoInput.value = selectedDocData.memo || "";
         }
-
+  // ✅ 여기 추가된 부분: 선택 라인 강조 처리
+  if (selectedId) {
+    const selEl = caseList.querySelector('[data-id="'+selectedId+'"]');
+    if (selEl) {
+      [...caseList.children].forEach(el=> el.classList.remove('select'));
+      selEl.classList.add('select');
+    }
+  }
+        
         // 작은 배너
         if (anyReq) {
           const d = anyReq.d;
