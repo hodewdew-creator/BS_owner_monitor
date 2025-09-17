@@ -67,7 +67,7 @@
     .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700;white-space:pre-wrap}
     .errbox.show{display:block}
 
-    /* ====== 확인 팝업(오버레이): 리셉 팝업과 유사 ====== */
+    /* ====== 확인 팝업(오버레이) ====== */
     .overlay{position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center; background:rgba(2,6,23,.65); backdrop-filter:blur(4px)}
     .overlay.show{display:flex}
     .modal{width:min(720px,92vw); background:#fff; color:#0f172a; border-radius:16px; border:3px solid #ef4444; box-shadow:0 20px 60px rgba(0,0,0,.35); padding:22px; text-align:center; animation:flash .9s ease-in-out 1}
@@ -79,29 +79,10 @@
     .m-actions .btn{padding:12px 16px; font-size:15px}
     .m-close{position:absolute; top:10px; right:12px; background:transparent; color:#fff; border:0; font-size:24px; cursor:pointer}
 
-    /* 이모지 전용 폰트 고정: 각 OS 컬러 이모지 우선 */
-.emoji{
-  font-family: "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla","Segoe UI Symbol",sans-serif;
-  font-weight: 400; /* 이모지는 굵기 고정이 좋아요 */
-  line-height: 1;
-  vertical-align: -2px; /* 살짝 내려서 정렬 안정 */
-}
+    .emoji{font-family: "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla","Segoe UI Symbol",sans-serif; font-weight:400; line-height:1; vertical-align:-2px;}
 
-/* 모달 제목: 과한 900→800으로 내려 선명도 확보 */
-.modal h2{
-  font-weight: 800;
-  -webkit-font-smoothing: antialiased; /* 크롬/사파리 */
-  -moz-osx-font-smoothing: grayscale;   /* 파폭 */
-  text-rendering: optimizeLegibility;
-}
-
-/* 애니메이션/블러로 인한 흐림 최소화 */
-.modal{
-  will-change: transform;
-  transform: translateZ(0); /* 레이어 승격으로 블러 감소 */
-}
-    
-  
+    .modal h2{font-weight:800; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; text-rendering:optimizeLegibility;}
+    .modal{will-change:transform; transform:translateZ(0);}
     .btn.ghost{ background:#1f2937; border:1px solid #4b5563; opacity:.9 }
     .btn.ghost:active{ transform: translateY(1px); }
   </style>
@@ -125,9 +106,8 @@
     <div id="grid" class="grid"></div>
   </div>
 
-  <audio id="ding" preload="auto">
-    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
-  </audio>
+  <!-- 🔔 알림음 (ding.mp3, 루트폴더) -->
+  <audio id="ding" src="ding.mp3" preload="auto"></audio>
 
   <!-- ▶ 확인 팝업(디스플레이 측) -->
   <div id="ackOverlay" class="overlay" aria-hidden="true">
@@ -177,19 +157,17 @@
 
     let auth, provider, db;
 
-    // ===== 팝업/상태 추적 =====
     const ackOverlay = document.getElementById('ackOverlay');
     const ackWho     = document.getElementById('ackWho');
     const ackConfirm = document.getElementById('ackConfirm');
     const ackClose   = document.getElementById('ackClose');
-    const ackHold   = document.getElementById('ackHold');
+    const ackHold    = document.getElementById('ackHold');
 
-    // 보류 상태 키 생성 (디스플레이 로컬 전용)
     const holdKey = (id, reqAt)=> `ackHold:${id}:${Number(reqAt||0)}`;
 
-    let modalTargetId = null;            // 현재 팝업 대상 문서 id
-    let modalTargetReqAt = 0;            // 해당 요청의 ackRequestedAt
-    const lastSeenReqAt = new Map();     // id -> 마지막으로 처리한 ackRequestedAt
+    let modalTargetId = null;
+    let modalTargetReqAt = 0;
+    const lastSeenReqAt = new Map();
 
     function openAck(name, id, reqAt){
       modalTargetId = id;
@@ -202,10 +180,9 @@
     function closeAck(){
       ackOverlay.classList.remove('show');
       ackOverlay.setAttribute('aria-hidden','true');
-      // 주의: lastSeenReqAt 갱신은 '성공적으로 처리됐을 때'만 한다 (onSnapshot에서 또는 confirm 성공시)
     }
 
-    try{
+        try{
       const { initializeApp }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
       const { getFirestore, collection, onSnapshot, query, orderBy, runTransaction, doc }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
       const { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
@@ -240,28 +217,24 @@
       onSnapshot(query(collection(db,"cases"),orderBy("createdAt","desc")),(snap)=>{
         hideErr();
 
-        // === 0) 스냅 최신값 맵 구성 ===
         const docs = snap.docs.map(x=>({ id:x.id, ...x.data() }));
         const byId = new Map(docs.map(d=>[d.id,d]));
 
-        // === 1) "다른 기기에서 확인" 자동 닫힘 ===
+        // 다른 기기에서 '확인' 처리되면 현재 팝업 닫기
         if (modalTargetId) {
           const fresh = byId.get(modalTargetId);
           if (fresh) {
             const reqAt = Number(fresh.ackRequestedAt||0);
-            // 누군가 확인해서 ackConfirmed:true 가 되면 → 모든 기기에서 닫기 + lastSeen 갱신
             if (fresh.ackConfirmed === true) {
               lastSeenReqAt.set(modalTargetId, reqAt);
               closeAck();
               modalTargetId = null;
             }
-            // (참고) 리셉이 false로 리셋하기 전에 닫혔으니, 같은 reqAt은 다시 열지 않음
           }
         }
 
-        // === 2) 새 요청 탐지 → 팝업 오픈 (조건 엄격화) ===
+        // 새 요청 탐지 → 팝업 오픈 (상담/면회만)
         if (!modalTargetId) {
-          // 상담/면회 대기 + ackConfirmed:false + (reqAt > lastSeen)
           const cands = docs.filter(d=>{
             const s=d.location||'';
             const reqAt = Number(d.ackRequestedAt||0);
@@ -270,7 +243,7 @@
             return (s==="상담대기중"||s==="면회대기중") && reqAt>0 && !d.ackConfirmed && reqAt>seen && !held;
           });
           if (cands.length){
-            cands.sort((a,b)=>(a.ackRequestedAt||0)-(b.ackRequestedAt||0)); // 오래된 것 우선
+            cands.sort((a,b)=>(a.ackRequestedAt||0)-(b.ackRequestedAt||0));
             const p = cands[0];
             const nm = (p.patientName||p.guardianName)
               ? (p.patientName && p.guardianName ? `${p.patientName}(${p.guardianName})` : (p.patientName||p.guardianName)) : p.id;
@@ -278,7 +251,11 @@
           }
         }
 
-        // === 3) 카드 렌더 (기존 기능 보존) ===
+        // 카드 렌더 및 알림음 트리거
+        const frag=document.createDocumentFragment();
+        if(!window._prevState){ window._prevState=new Map(); window._prevHasMemo=new Map(); window._lastCall=new Set(); window._inited=false; }
+        const prevState=window._prevState, prevHasMemo=window._prevHasMemo, lastCall=window._lastCall, inited=window._inited;
+
         // 정렬: 상담/면회(0) → 진료실(1) → 기타(2) → 귀가/수납후미귀가(3)
         docs.sort((a,b)=>{
           const rank=(d)=>{
@@ -293,15 +270,11 @@
           return (b.createdAt||0)-(a.createdAt||0);
         });
 
-        const frag=document.createDocumentFragment();
-        // 소리 트리거 추적
-        if(!window._prevState){ window._prevState=new Map(); window._prevHasMemo=new Map(); window._lastCall=new Set(); window._inited=false; }
-        const prevState=window._prevState, prevHasMemo=window._prevHasMemo, lastCall=window._lastCall, inited=window._inited;
-
         docs.forEach(d=>{
           let shouldDing=false;
           const curState=d.location||"";
           const curHasMemo=!!((d.memo||"").trim());
+
           if(inited){
             if(d.callRequested && !lastCall.has(d.id)) shouldDing=true;
             const ps=prevState.get(d.id);
@@ -337,7 +310,6 @@
           meta.textContent=d.updatedAt?`업데이트: ${relTime(d.updatedAt)} (${formatKTime(d.updatedAt)})`:'';
           card.appendChild(meta);
 
-          // 기존 액션 버튼 유지
           const actions=document.createElement('div');actions.className='actions';
           const callBtn=document.createElement('button');callBtn.className='btn';callBtn.textContent='📣 콜요청하기';
           const cancelBtn=document.createElement('button');cancelBtn.className='btn ghost';cancelBtn.textContent='콜요청취소';
@@ -371,33 +343,35 @@
         }catch(e){ throw e; }
       }
 
-      // ▶ 팝업 버튼: ‘확인’/‘✕’ — 업데이트 성공 시에만 닫기
+      // ▶ 팝업 버튼: ‘확인’은 전송, ‘보류/X’는 단순 닫기
       async function confirmAckAndClose(){
         if(!modalTargetId) return;
         try{
           await updateCase(modalTargetId,{ ackConfirmed:true });
-          // 성공 시: 이 요청(reqAt)을 처리 완료로 기록 → 리셋(false) 이후에도 재오픈 방지
           lastSeenReqAt.set(modalTargetId, modalTargetReqAt||Date.now());
           closeAck();
           modalTargetId=null;
         }catch(e){
           showErr('확인 전송 실패: '+(e.code||'')+' '+e.message);
-          // 실패하면 팝업을 닫지 않는다(권한 문제 등).
         }
       }
+      // 확인 = 전송
       ackConfirm.onclick = ()=> requireLoginThen(confirmAckAndClose);
-      ackClose.onclick   = ()=> requireLoginThen(confirmAckAndClose);
+      // 보류 = 단순 닫기
       ackHold.onclick    = ()=>{
         try{
           if(modalTargetId && modalTargetReqAt){
             localStorage.setItem(holdKey(modalTargetId, modalTargetReqAt), '1');
           }
         }catch(e){}
-        // 확인 전송 없이 단순 닫기
         closeAck();
         modalTargetId=null;
       };
-      
+      // X = 보류와 동일 (신호 전송 없이 닫기)
+      ackClose.onclick   = ()=>{
+        closeAck();
+        modalTargetId=null;
+      };
 
     }catch(e){
       conn.textContent='초기화 오류';conn.className='pill err';
@@ -406,3 +380,4 @@
   </script>
 </body>
 </html>
+
