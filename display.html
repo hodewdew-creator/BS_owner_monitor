@@ -101,6 +101,9 @@
   transform: translateZ(0); /* 레이어 승격으로 블러 감소 */
 }
     
+  
+    .btn.ghost{ background:#1f2937; border:1px solid #4b5563; opacity:.9 }
+    .btn.ghost:active{ transform: translateY(1px); }
   </style>
 </head>
 <body>
@@ -132,8 +135,9 @@
     <div class="modal" role="dialog" aria-modal="true">
      <h2><span class="emoji">📣</span> 대기 환자 확인</h2>
       <div id="ackWho" class="who"></div>
-      <div class="hint">“확인”을 누르면 리셉에 ‘대기중 전달완료’로 안내됩니다.</div>
+      <div class="hint">“확인”을 누르면 리셉에 ‘대기중 전달완료’로 안내됩니다. ("보류"를 누르면 이 컴퓨터에서의 팝업창만 사라집니다.) </div>
       <div class="m-actions">
+        <button id="ackHold" class="btn ghost">보류</button>
         <button id="ackConfirm" class="btn">확인</button>
       </div>
     </div>
@@ -178,6 +182,10 @@
     const ackWho     = document.getElementById('ackWho');
     const ackConfirm = document.getElementById('ackConfirm');
     const ackClose   = document.getElementById('ackClose');
+    const ackHold   = document.getElementById('ackHold');
+
+    // 보류 상태 키 생성 (디스플레이 로컬 전용)
+    const holdKey = (id, reqAt)=> `ackHold:${id}:${Number(reqAt||0)}`;
 
     let modalTargetId = null;            // 현재 팝업 대상 문서 id
     let modalTargetReqAt = 0;            // 해당 요청의 ackRequestedAt
@@ -258,7 +266,8 @@
             const s=d.location||'';
             const reqAt = Number(d.ackRequestedAt||0);
             const seen  = lastSeenReqAt.get(d.id)||0;
-            return (s==="상담대기중"||s==="면회대기중") && reqAt>0 && !d.ackConfirmed && reqAt>seen;
+            const held = (function(){ try{ return localStorage.getItem(holdKey(d.id, reqAt))==='1'; }catch(e){ return false; } })();
+            return (s==="상담대기중"||s==="면회대기중") && reqAt>0 && !d.ackConfirmed && reqAt>seen && !held;
           });
           if (cands.length){
             cands.sort((a,b)=>(a.ackRequestedAt||0)-(b.ackRequestedAt||0)); // 오래된 것 우선
@@ -378,6 +387,17 @@
       }
       ackConfirm.onclick = ()=> requireLoginThen(confirmAckAndClose);
       ackClose.onclick   = ()=> requireLoginThen(confirmAckAndClose);
+      ackHold.onclick    = ()=>{
+        try{
+          if(modalTargetId && modalTargetReqAt){
+            localStorage.setItem(holdKey(modalTargetId, modalTargetReqAt), '1');
+          }
+        }catch(e){}
+        // 확인 전송 없이 단순 닫기
+        closeAck();
+        modalTargetId=null;
+      };
+      
 
     }catch(e){
       conn.textContent='초기화 오류';conn.className='pill err';
