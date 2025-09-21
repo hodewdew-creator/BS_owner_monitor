@@ -34,8 +34,16 @@
       background:var(--card); border:1px solid var(--border); border-radius:16px;
       padding:14px; display:flex; flex-direction:column; gap:10px;
     }
-    .card.call{outline:4px solid rgba(220,38,38,.6); outline-offset:-4px; animation:call 1.2s linear infinite}
+    /* 콜요청 = 고정 테두리(무한 점멸 제거) */
+    .card.call{outline:4px solid rgba(220,38,38,.6); outline-offset:-4px; animation:none;}
+
     @keyframes call{0%,100%{outline-color:rgba(220,38,38,.2)}50%{outline-color:rgba(220,38,38,.8)}}
+
+    /* 🔔 상담/면회/메모 신규시 5~6초 붉은 테두리 */
+    .card.flash5{
+      outline:4px solid rgba(220,38,38,.8);
+      outline-offset:-4px;
+    }
 
     .head{display:flex; align-items:center; justify-content:space-between; gap:10px}
     .name{font-weight:900; font-size:18px; word-break:keep-all}
@@ -62,12 +70,11 @@
     .actions{display:flex; gap:8px; flex-wrap:wrap}
     .btn{cursor:pointer; border:0; border-radius:10px; padding:8px 12px; font-size:13px; font-weight:700;
       background:#1f2937; color:#fff; border:1px solid #374151;}
-    .btn.ghost{background:transparent; color:#9CA3AF}
+    .btn.ghost{background:transparent; color:#9ca3af}
 
     .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700;white-space:pre-wrap}
     .errbox.show{display:block}
 
-    /* ====== 확인 팝업(오버레이) ====== */
     .overlay{position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center; background:rgba(2,6,23,.65); backdrop-filter:blur(4px)}
     .overlay.show{display:flex}
     .modal{width:min(720px,92vw); background:#fff; color:#0f172a; border-radius:16px; border:3px solid #ef4444; box-shadow:0 20px 60px rgba(0,0,0,.35); padding:22px; text-align:center; animation:flash .9s ease-in-out 1}
@@ -106,10 +113,8 @@
     <div id="grid" class="grid"></div>
   </div>
 
-  <!-- 🔔 알림음 (ding.mp3, 루트폴더) -->
   <audio id="ding" src="ding.mp3" preload="auto"></audio>
 
-  <!-- ▶ 확인 팝업(디스플레이 측) -->
   <div id="ackOverlay" class="overlay" aria-hidden="true">
     <button id="ackClose" class="m-close" title="닫기">✕</button>
     <div class="modal" role="dialog" aria-modal="true">
@@ -182,7 +187,15 @@
       ackOverlay.setAttribute('aria-hidden','true');
     }
 
-        try{
+    /* 🔔 5~6초 붉은 테두리 유지 (상담/면회/메모 신규) */
+    function flashSolidById(id, ms=5600){
+      const el = document.querySelector(`.card[data-id="${id}"]`);
+      if(!el) return;
+      el.classList.add('flash5');
+      setTimeout(()=> el.classList.remove('flash5'), ms);
+    }
+
+    try{
       const { initializeApp }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
       const { getFirestore, collection, onSnapshot, query, orderBy, runTransaction, doc }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
       const { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
@@ -220,7 +233,7 @@
         const docs = snap.docs.map(x=>({ id:x.id, ...x.data() }));
         const byId = new Map(docs.map(d=>[d.id,d]));
 
-        // 다른 기기에서 '확인' 처리되면 현재 팝업 닫기
+        // 다른 기기에서 확인되면 현재 팝업 닫기
         if (modalTargetId) {
           const fresh = byId.get(modalTargetId);
           if (fresh) {
@@ -233,7 +246,7 @@
           }
         }
 
-        // 새 요청 탐지 → 팝업 오픈 (상담/면회만)
+        // 새 요청 탐지 → 팝업 (상담/면회만)
         if (!modalTargetId) {
           const cands = docs.filter(d=>{
             const s=d.location||'';
@@ -251,12 +264,12 @@
           }
         }
 
-        // 카드 렌더 및 알림음 트리거
+        // 카드 렌더 및 알림 트리거 계산 준비
         const frag=document.createDocumentFragment();
         if(!window._prevState){ window._prevState=new Map(); window._prevHasMemo=new Map(); window._lastCall=new Set(); window._inited=false; }
         const prevState=window._prevState, prevHasMemo=window._prevHasMemo, lastCall=window._lastCall, inited=window._inited;
 
-        // 정렬: 상담/면회(0) → 진료실(1) → 기타(2) → 귀가/수납후미귀가(3)
+        // 정렬 우선순위
         docs.sort((a,b)=>{
           const rank=(d)=>{
             const s=d.location||'';
@@ -270,24 +283,46 @@
           return (b.createdAt||0)-(a.createdAt||0);
         });
 
+        const toFlashSolid = []; // ✅ 이번 프레임에서 5~6초 붉은 테두리 줄 대상
         docs.forEach(d=>{
           let shouldDing=false;
           const curState=d.location||"";
           const curHasMemo=!!((d.memo||"").trim());
 
           if(inited){
-            if(d.callRequested && !lastCall.has(d.id)) shouldDing=true;
+            if(d.callRequested && !lastCall.has(d.id)) shouldDing=true;                   // 콜 새로 켜짐
             const ps=prevState.get(d.id);
-            if((curState==="상담대기중"||curState==="면회대기중") && curState!==ps) shouldDing=true;
+            if((curState==="상담대기중"||curState==="면회대기중") && curState!==ps) shouldDing=true; // 상담/면회 진입
             const pm=prevHasMemo.get(d.id);
-            if(curHasMemo && !pm) shouldDing=true;
+            if(curHasMemo && !pm) shouldDing=true;                                       // 메모 신규
           }
-          if(d.callRequested) lastCall.add(d.id); else lastCall.delete(d.id);
-          if(shouldDing){ try{ ding.currentTime=0; ding.play().catch(()=>{});}catch(e){} }
-          prevState.set(d.id,curState); prevHasMemo.set(d.id,curHasMemo);
 
-          const card=document.createElement('div');card.className='card';
-          if(d.callRequested) card.classList.add('call');
+          // 콜요청 집합 갱신
+          if(d.callRequested) lastCall.add(d.id); else lastCall.delete(d.id);
+
+          // 🔔 소리 트리거가 났고, "콜 새로 켜짐"이 아닌 경우 → 5~6초 붉은 테두리
+          const isNewCall = (d.callRequested && !inited && false) || (d.callRequested && !prevState.has(d.id)) ? false
+                            : (d.callRequested && !window._lastCall.has(d.id)); // 보호적 계산
+          // 위 한 줄은 방어적이지만, 실제로는 아래처럼 간단히:
+          // const isNewCall = (d.callRequested && !window._lastCall.has(d.id));
+
+          if(shouldDing){
+            // 새 콜이 아니라면(= 상담/면회 진입 또는 메모 신규), 잠시 붉은 테두리
+            const newCallNow = (d.callRequested && !window._lastCall.has(d.id));
+            if(!newCallNow){
+              toFlashSolid.push(d.id);
+            }
+            try{ ding.currentTime=0; ding.play().catch(()=>{});}catch(e){}
+          }
+
+          prevState.set(d.id,curState);
+          prevHasMemo.set(d.id,curHasMemo);
+
+          // === 카드 DOM ===
+          const card=document.createElement('div');
+          card.className='card';
+          card.dataset.id = d.id;                             // ✅ 테두리 적용을 위한 data-id
+          if(d.callRequested) card.classList.add('call');     // 콜요청 고정 테두리
 
           const head=document.createElement('div');head.className='head';
           const name=document.createElement('div');name.className='name';
@@ -320,9 +355,17 @@
 
           frag.appendChild(card);
         });
-        const gridEl=document.getElementById('grid'); gridEl.innerHTML=''; gridEl.appendChild(frag);
-        window._inited=true;
 
+        const gridEl=document.getElementById('grid');
+        gridEl.innerHTML='';
+        gridEl.appendChild(frag);
+
+        // ✅ 렌더 완료 후, 상담/면회/메모 신규였던 카드들만 5~6초 붉은 테두리
+        requestAnimationFrame(()=>{
+          toFlashSolid.forEach(id => flashSolidById(id));
+        });
+
+        window._inited=true;
         conn.textContent='연결됨'; conn.className='pill ok';
       },(e)=>{conn.textContent='연결 오류';conn.className='pill err';showErr('리스트 구독 실패: '+e.message);});
 
@@ -367,7 +410,7 @@
         closeAck();
         modalTargetId=null;
       };
-      // X = 보류와 동일 (신호 전송 없이 닫기)
+      // X = 보류와 동일
       ackClose.onclick   = ()=>{
         closeAck();
         modalTargetId=null;
@@ -380,4 +423,3 @@
   </script>
 </body>
 </html>
-
