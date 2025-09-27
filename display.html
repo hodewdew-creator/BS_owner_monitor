@@ -104,6 +104,7 @@
       <span id="whoami" class="whoami"></span>
       <button id="loginBtn" class="tbtn ok">Google 로그인</button>
       <button id="logoutBtn" class="tbtn" style="display:none">로그아웃</button>
+      <button id="soundBtn" class="tbtn" title="소리: 켬" aria-pressed="true">🔊</button>
       <span id="conn" class="pill warn">연결 확인 중…</span>
     </div>
   </div>
@@ -137,6 +138,73 @@
     const loginBtn=document.getElementById('loginBtn');
     const logoutBtn=document.getElementById('logoutBtn');
 
+    // ===== 소리/알림 토글 & 통합 울림 유틸 =====
+const soundBtn = document.getElementById('soundBtn');
+
+function isHidden(){ return document.hidden === true; }
+function isSoundOn(){
+  try{ return localStorage.getItem('soundOn') !== '0'; }catch(e){ return true; } // 기본: 켬
+}
+function setSound(on){
+  try{ localStorage.setItem('soundOn', on ? '1' : '0'); }catch(e){}
+  updateSoundUI();
+}
+function updateSoundUI(){
+  const on = isSoundOn();
+  if(!soundBtn) return;
+  soundBtn.textContent = on ? '🔊' : '🔇';
+  soundBtn.title = on ? '소리: 켬' : '소리: 끔';
+  soundBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+}
+
+function canSystemNotify(){ return 'Notification' in window; }
+async function ensureNotifyPermissionIfNeeded(){
+  if(!canSystemNotify()) return false;
+  // 권한이 없는데 창이 숨김 상태면 시스템 알림이 막혀서 울리지 않을 수 있음 → 미리 요청
+  if(Notification.permission === 'granted') return true;
+  if(Notification.permission === 'denied') return false;
+  const res = await Notification.requestPermission();
+  return res === 'granted';
+}
+
+/** 소리/알림 통합 울림
+ * - 켬(🔊)일 때만 동작
+ * - 보이는 중: ding.mp3 재생
+ * - 숨김/최소화: ding 재생 + 시스템 알림(윈도우 기본 효과음 기대)
+ */
+async function ringWithFallback(title, body, tag='bs-owner-monitor'){
+  if(!isSoundOn()) return; // 🔇이면 무음
+  // 1) 사운드 시도
+  try{ ding.currentTime = 0; await ding.play(); }catch(e){ /* 브라우저 정책에 따라 무시될 수 있음 */ }
+
+  // 2) 숨김(백그라/최소화)일 때 시스템 알림도
+  if(isHidden() && canSystemNotify()){
+    const ok = await ensureNotifyPermissionIfNeeded();
+    if(ok){
+      new Notification(title, {
+        body, tag, renotify:true, requireInteraction:true, timestamp:Date.now(), silent:false
+      });
+    }
+  }
+}
+
+// 토글 버튼 클릭
+if (soundBtn){
+  soundBtn.onclick = async ()=>{
+    const next = !isSoundOn();
+    setSound(next);
+    // 켬으로 바꾸는 순간, 최소화 대응 위해 권한 미리 확보 시도(거부해도 동작은 유지)
+    if(next && canSystemNotify() && Notification.permission !== 'granted'){
+      await ensureNotifyPermissionIfNeeded();
+      updateSoundUI();
+    }
+  };
+  // 초기 UI 동기화
+  updateSoundUI();
+}
+// 브라우저 시작 시 권한이 이미 granted면 그대로, 아니면 나중에 ring 시 요청
+
+    
     // ---- Device name resolve & persist ----
     function resolveDeviceName(){
       try{
@@ -196,7 +264,7 @@
       ackWho.textContent = name;
       ackOverlay.classList.add('show');
       ackOverlay.setAttribute('aria-hidden','false');
-      try{ ding.currentTime=0; ding.play().catch(()=>{});}catch(e){}
+      ringWithFallback('대기 환자 확인', `${name} 확인 필요`, 'ack-popup');
     }
     function closeAck(){
       ackOverlay.classList.remove('show');
@@ -328,7 +396,12 @@
             if(!newCallNow){
               toFlashSolid.push(d.id);
             }
-            try{ ding.currentTime=0; ding.play().catch(()=>{});}catch(e){}
+            const nm = (d.patientName||d.guardianName)
+  ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName))
+  : d.id;
+const state = (d.location||'상태변경');
+ringWithFallback('상태 알림', `${nm}: ${state}`, 'case-update');
+
           }
 
           prevState.set(d.id,curState);
