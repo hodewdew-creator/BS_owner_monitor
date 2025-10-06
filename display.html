@@ -479,7 +479,7 @@ ringWithFallback('상태 알림', `${nm}: ${state}`, 'case-update');
      async function confirmAckAndClose(){
         if(!modalTargetId) return;
         try{
-   await updateCase(modalTargetId,{ ackConfirmed:true, ackDevice: DEVICE_NAME, ackAt: Date.now() });
+   await updateCase(modalTargetId,{ ackConfirmed:true, ackDevice: DEVICE_NAME, ackAt: Date.now(), ackResolvedAt: Date.now() });
 
           lastSeenReqAt.set(modalTargetId, modalTargetReqAt||Date.now());
           closeAck();
