@@ -10,6 +10,10 @@
       --card:#111827cc; --border:#1f2937; --blur:8px;
       --brand:#2b5fa3;
       --s-red:#dc2626; --s-amber:#d97706; --s-sky:#0284c7; --s-green:#111827; --s-gray:#64748b;
+
+      /* [ADD] 전달상태 색 */
+      --relay-need-bg:#dc2626; --relay-need-ink:#fff;
+      --relay-done-bg:#6b7280; --relay-done-ink:#fff;
     }
     html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto}
     .topbar{
@@ -29,7 +33,8 @@
     .pill.ok{background:#111827}.pill.err{background:#dc2626}.pill.warn{background:#f59e0b;color:#111}
 
     .wrap{min-height:100%;padding:64px 14px 20px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+    /* [ADD] 더 좁은 카드 폭 허용: 320→260 */
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
     .card{
       background:var(--card); border:1px solid var(--border); border-radius:16px;
       padding:14px; display:flex; flex-direction:column; gap:10px;
@@ -58,6 +63,12 @@
     .b-라운지콜완료,.b-외출콜완료{background:#34D399; border-color:transparent}
     .b-귀가,.b-수납후미귀가{background:#9CA3AF; color:#111; border-color:transparent}
     .b-1진료실,.b-2진료실,.b-3진료실,.b-4진료실{ background:#2b5fa3; color:#fff; border-color:transparent; }
+
+    /* [ADD] 전달상태 보조 배지 */
+    .relay-badges{display:flex;gap:6px;flex-wrap:wrap}
+    .relay-badge{border-radius:999px;padding:4px 8px;font-size:11px;font-weight:900}
+    .relay-need{background:var(--relay-need-bg);color:var(--relay-need-ink)}
+    .relay-done{background:var(--relay-done-bg);color:var(--relay-done-ink)}
 
     .memo{
       display:none; font-size:14px; line-height:1.25; font-weight:800;
@@ -139,72 +150,60 @@
     const logoutBtn=document.getElementById('logoutBtn');
 
     // ===== 소리/알림 토글 & 통합 울림 유틸 =====
-const soundBtn = document.getElementById('soundBtn');
+    const soundBtn = document.getElementById('soundBtn');
 
-function isHidden(){ return document.hidden === true; }
-function isSoundOn(){
-  try{ return localStorage.getItem('soundOn') !== '0'; }catch(e){ return true; } // 기본: 켬
-}
-function setSound(on){
-  try{ localStorage.setItem('soundOn', on ? '1' : '0'); }catch(e){}
-  updateSoundUI();
-}
-function updateSoundUI(){
-  const on = isSoundOn();
-  if(!soundBtn) return;
-  soundBtn.textContent = on ? '🔊' : '🔇';
-  soundBtn.title = on ? '소리: 켬' : '소리: 끔';
-  soundBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-}
-
-function canSystemNotify(){ return 'Notification' in window; }
-async function ensureNotifyPermissionIfNeeded(){
-  if(!canSystemNotify()) return false;
-  // 권한이 없는데 창이 숨김 상태면 시스템 알림이 막혀서 울리지 않을 수 있음 → 미리 요청
-  if(Notification.permission === 'granted') return true;
-  if(Notification.permission === 'denied') return false;
-  const res = await Notification.requestPermission();
-  return res === 'granted';
-}
-
-/** 소리/알림 통합 울림
- * - 켬(🔊)일 때만 동작
- * - 보이는 중: ding.mp3 재생
- * - 숨김/최소화: ding 재생 + 시스템 알림(윈도우 기본 효과음 기대)
- */
-async function ringWithFallback(title, body, tag='bs-owner-monitor'){
-  if(!isSoundOn()) return; // 🔇이면 무음
-  // 1) 사운드 시도
-  try{ ding.currentTime = 0; await ding.play(); }catch(e){ /* 브라우저 정책에 따라 무시될 수 있음 */ }
-
-  // 2) 숨김(백그라/최소화)일 때 시스템 알림도
-  if(isHidden() && canSystemNotify()){
-    const ok = await ensureNotifyPermissionIfNeeded();
-    if(ok){
-      new Notification(title, {
-        body, tag, renotify:true, requireInteraction:true, timestamp:Date.now(), silent:false
-      });
+    function isHidden(){ return document.hidden === true; }
+    function isSoundOn(){
+      try{ return localStorage.getItem('soundOn') !== '0'; }catch(e){ return true; } // 기본: 켬
     }
-  }
-}
-
-// 토글 버튼 클릭
-if (soundBtn){
-  soundBtn.onclick = async ()=>{
-    const next = !isSoundOn();
-    setSound(next);
-    // 켬으로 바꾸는 순간, 최소화 대응 위해 권한 미리 확보 시도(거부해도 동작은 유지)
-    if(next && canSystemNotify() && Notification.permission !== 'granted'){
-      await ensureNotifyPermissionIfNeeded();
+    function setSound(on){
+      try{ localStorage.setItem('soundOn', on ? '1' : '0'); }catch(e){}
       updateSoundUI();
     }
-  };
-  // 초기 UI 동기화
-  updateSoundUI();
-}
-// 브라우저 시작 시 권한이 이미 granted면 그대로, 아니면 나중에 ring 시 요청
+    function updateSoundUI(){
+      const on = isSoundOn();
+      if(!soundBtn) return;
+      soundBtn.textContent = on ? '🔊' : '🔇';
+      soundBtn.title = on ? '소리: 켬' : '소리: 끔';
+      soundBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
 
-    
+    function canSystemNotify(){ return 'Notification' in window; }
+    async function ensureNotifyPermissionIfNeeded(){
+      if(!canSystemNotify()) return false;
+      if(Notification.permission === 'granted') return true;
+      if(Notification.permission === 'denied') return false;
+      const res = await Notification.requestPermission();
+      return res === 'granted';
+    }
+
+    /** 소리/알림 통합 울림 (기존) */
+    async function ringWithFallback(title, body, tag='bs-owner-monitor'){
+      if(!isSoundOn()) return;
+      try{ ding.currentTime = 0; await ding.play(); }catch(e){ }
+      if(isHidden() && canSystemNotify()){
+        const ok = await ensureNotifyPermissionIfNeeded();
+        if(ok){
+          new Notification(title, {
+            body, tag, renotify:true, requireInteraction:true, timestamp:Date.now(), silent:false
+          });
+        }
+      }
+    }
+
+    // 토글 버튼 클릭
+    if (soundBtn){
+      soundBtn.onclick = async ()=>{
+        const next = !isSoundOn();
+        setSound(next);
+        if(next && canSystemNotify() && Notification.permission !== 'granted'){
+          await ensureNotifyPermissionIfNeeded();
+          updateSoundUI();
+        }
+      };
+      updateSoundUI();
+    }
+
     // ---- Device name resolve & persist ----
     function resolveDeviceName(){
       try{
@@ -220,7 +219,6 @@ if (soundBtn){
     }
     const DEVICE_NAME = resolveDeviceName();
 
-    
     const showErr=(m)=>{console.error(m);errBox.textContent=m;errBox.classList.add('show')};
     const hideErr=()=>errBox.classList.remove('show');
 
@@ -228,6 +226,12 @@ if (soundBtn){
       if(s<60)return`${s}초 전`;const m=Math.floor(s/60);if(m<60)return`${m}분 전`;
       const h=Math.floor(m/60);if(h<24)return`${h}시간 전`;const d=Math.floor(h/24);return`${d}일 전`};
     const formatKTime=(ts)=>{if(!ts)return"";const d=new Date(ts);let h=d.getHours();const m=String(d.getMinutes()).padStart(2,"0");const ap=h<12?"오전":"오후";h=h%12||12;return`${ap} ${h}:${m}`};
+
+    // [ADD] 최소화 후 복귀 시 점멸 억제 윈도우
+    let suppressFlashUntil = 0;
+    document.addEventListener('visibilitychange', ()=>{
+      if(!document.hidden){ suppressFlashUntil = Date.now() + 2000; }
+    });
 
     setInterval(()=>{document.querySelectorAll('[data-updated]').forEach(el=>{
       const ts=Number(el.dataset.updated||0);
@@ -273,6 +277,7 @@ if (soundBtn){
 
     /* 🔔 5~6초 붉은 테두리 유지 (상담/면회/메모 신규) */
     function flashSolidById(id, ms=5600){
+      if(Date.now() < suppressFlashUntil) return; // [ADD] 최소화 복귀 버스트 방지
       const el = document.querySelector(`.card[data-id="${id}"]`);
       if(!el) return;
       el.classList.add('flash5');
@@ -311,6 +316,9 @@ if (soundBtn){
         else{ whoami.textContent=''; logoutBtn.style.display='none'; loginBtn.style.display=''; }
       });
 
+      // [ADD] 콜요청 3초 지연 관리
+      const pendingTimers = new Map(); // id -> timeoutId
+
       onSnapshot(query(collection(db,"cases"),orderBy("createdAt","desc")),(snap)=>{
         hideErr();
 
@@ -348,7 +356,6 @@ if (soundBtn){
           }
         }
 
-        // 카드 렌더 및 알림 트리거 계산 준비
         const frag=document.createDocumentFragment();
         if(!window._prevState){ window._prevState=new Map(); window._prevHasMemo=new Map(); window._lastCall=new Set(); window._inited=false; }
         const prevState=window._prevState, prevHasMemo=window._prevHasMemo, lastCall=window._lastCall, inited=window._inited;
@@ -367,7 +374,7 @@ if (soundBtn){
           return (b.createdAt||0)-(a.createdAt||0);
         });
 
-        const toFlashSolid = []; // ✅ 이번 프레임에서 5~6초 붉은 테두리 줄 대상
+        const toFlashSolid = []; // 이번 프레임에서 5~6초 붉은 테두리 줄 대상
         docs.forEach(d=>{
           let shouldDing=false;
           const curState=d.location||"";
@@ -381,27 +388,16 @@ if (soundBtn){
             if(curHasMemo && !pm) shouldDing=true;                                       // 메모 신규
           }
 
-          // 콜요청 집합 갱신
           if(d.callRequested) lastCall.add(d.id); else lastCall.delete(d.id);
 
-          // 🔔 소리 트리거가 났고, "콜 새로 켜짐"이 아닌 경우 → 5~6초 붉은 테두리
-          const isNewCall = (d.callRequested && !inited && false) || (d.callRequested && !prevState.has(d.id)) ? false
-                            : (d.callRequested && !window._lastCall.has(d.id)); // 보호적 계산
-          // 위 한 줄은 방어적이지만, 실제로는 아래처럼 간단히:
-          // const isNewCall = (d.callRequested && !window._lastCall.has(d.id));
-
           if(shouldDing){
-            // 새 콜이 아니라면(= 상담/면회 진입 또는 메모 신규), 잠시 붉은 테두리
             const newCallNow = (d.callRequested && !window._lastCall.has(d.id));
-            if(!newCallNow){
-              toFlashSolid.push(d.id);
-            }
+            if(!newCallNow){ toFlashSolid.push(d.id); }
             const nm = (d.patientName||d.guardianName)
-  ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName))
-  : d.id;
-const state = (d.location||'상태변경');
-ringWithFallback('상태 알림', `${nm}: ${state}`, 'case-update');
-
+              ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName))
+              : d.id;
+            const state = (d.location||'상태변경');
+            ringWithFallback('상태 알림', `${nm}: ${state}`, 'case-update');
           }
 
           prevState.set(d.id,curState);
@@ -410,8 +406,8 @@ ringWithFallback('상태 알림', `${nm}: ${state}`, 'case-update');
           // === 카드 DOM ===
           const card=document.createElement('div');
           card.className='card';
-          card.dataset.id = d.id;                             // ✅ 테두리 적용을 위한 data-id
-          if(d.callRequested) card.classList.add('call');     // 콜요청 고정 테두리
+          card.dataset.id = d.id;
+          if(d.callRequested) card.classList.add('call');
 
           const head=document.createElement('div');head.className='head';
           const name=document.createElement('div');name.className='name';
@@ -421,6 +417,15 @@ ringWithFallback('상태 알림', `${nm}: ${state}`, 'case-update');
           const badge=document.createElement('span');badge.className='badge '+(badgeClass(curState)||''); badge.textContent=curState||'상태없음';
           head.appendChild(name); head.appendChild(badge);
           card.appendChild(head);
+
+          // [ADD] 전달상태 보조 배지
+          if(d.relayState==="need" || d.relayState==="done"){
+            const rel=document.createElement('div'); rel.className='relay-badges';
+            const b=document.createElement('span'); b.className='relay-badge '+(d.relayState==="need"?'relay-need':'relay-done');
+            b.textContent = d.relayState==="need" ? "전달필요" : "전달완료";
+            rel.appendChild(b);
+            card.appendChild(rel);
+          }
 
           const memoTxt=(d.memo||"").trim();
           if(memoTxt){
@@ -437,9 +442,29 @@ ringWithFallback('상태 알림', `${nm}: ${state}`, 'case-update');
           const actions=document.createElement('div');actions.className='actions';
           const callBtn=document.createElement('button');callBtn.className='btn';callBtn.textContent='📣 콜요청하기';
           const cancelBtn=document.createElement('button');cancelBtn.className='btn ghost';cancelBtn.textContent='콜요청취소';
-        callBtn.onclick=()=> requireLoginThen(()=>updateCase(d.id,{callRequested:true,callRequestedAt:Date.now(),callRequestedBy:DEVICE_NAME}));
-          cancelBtn.onclick=()=> requireLoginThen(()=>updateCase(d.id,{callRequested:false}));
+
+          // [ADD] 전달필요/전달완료 토글 버튼
+          const setNeed=document.createElement('button'); setNeed.className='btn'; setNeed.textContent='전달필요';
+          const setDone=document.createElement('button'); setDone.className='btn'; setDone.textContent='전달완료';
+
+          // [ADD] 3초 지연 콜요청
+          callBtn.onclick=()=> requireLoginThen(()=>{
+            if(pendingTimers.has(d.id)) return; // 중복 예약 방지
+            const t=setTimeout(()=>{ updateCase(d.id,{callRequested:true,callRequestedAt:Date.now(),callRequestedBy:DEVICE_NAME}); pendingTimers.delete(d.id); },3000);
+            pendingTimers.set(d.id,t);
+          });
+          cancelBtn.onclick=()=> requireLoginThen(()=>{
+            const t=pendingTimers.get(d.id);
+            if(t){ clearTimeout(t); pendingTimers.delete(d.id); }
+            updateCase(d.id,{callRequested:false});
+          });
+
+          // [ADD] 전달필요/완료 토글 동작
+          setNeed.onclick = ()=> requireLoginThen(()=> updateCase(d.id,{relayState:"need"}));
+          setDone.onclick = ()=> requireLoginThen(()=> updateCase(d.id,{relayState:"done"}));
+
           actions.appendChild(callBtn);actions.appendChild(cancelBtn);
+          actions.appendChild(setNeed);actions.appendChild(setDone); // [ADD]
           card.appendChild(actions);
 
           frag.appendChild(card);
@@ -449,10 +474,7 @@ ringWithFallback('상태 알림', `${nm}: ${state}`, 'case-update');
         gridEl.innerHTML='';
         gridEl.appendChild(frag);
 
-        // ✅ 렌더 완료 후, 상담/면회/메모 신규였던 카드들만 5~6초 붉은 테두리
-        requestAnimationFrame(()=>{
-          toFlashSolid.forEach(id => flashSolidById(id));
-        });
+        requestAnimationFrame(()=>{ toFlashSolid.forEach(id => flashSolidById(id)); });
 
         window._inited=true;
         conn.textContent='연결됨'; conn.className='pill ok';
@@ -476,11 +498,11 @@ ringWithFallback('상태 알림', `${nm}: ${state}`, 'case-update');
       }
 
       // ▶ 팝업 버튼: ‘확인’은 전송, ‘보류/X’는 단순 닫기
-     async function confirmAckAndClose(){
+      async function confirmAckAndClose(){
         if(!modalTargetId) return;
         try{
-   await updateCase(modalTargetId,{ ackConfirmed:true, ackDevice: DEVICE_NAME, ackAt: Date.now(), ackResolvedAt: Date.now() });
-
+          // [ADD] 확인=전달완료
+          await updateCase(modalTargetId,{ ackConfirmed:true, ackDevice: DEVICE_NAME, ackAt: Date.now(), ackResolvedAt: Date.now(), relayState:"done" });
           lastSeenReqAt.set(modalTargetId, modalTargetReqAt||Date.now());
           closeAck();
           modalTargetId=null;
@@ -488,19 +510,22 @@ ringWithFallback('상태 알림', `${nm}: ${state}`, 'case-update');
           showErr('확인 전송 실패: '+(e.code||'')+' '+e.message);
         }
       }
-      // 확인 = 전송
       ackConfirm.onclick = ()=> requireLoginThen(confirmAckAndClose);
-      // 보류 = 단순 닫기
+
+      // 보류 = 단순 닫기 + [ADD] 전달필요 표기
       ackHold.onclick    = ()=>{
         try{
           if(modalTargetId && modalTargetReqAt){
             localStorage.setItem(holdKey(modalTargetId, modalTargetReqAt), '1');
           }
         }catch(e){}
+        if(modalTargetId){
+          requireLoginThen(()=> updateCase(modalTargetId,{ relayState:"need" }));
+        }
         closeAck();
         modalTargetId=null;
       };
-      // X = 보류와 동일
+      // X = 보류와 동일 (단, 전달표시는 하지 않음)
       ackClose.onclick   = ()=>{
         closeAck();
         modalTargetId=null;
