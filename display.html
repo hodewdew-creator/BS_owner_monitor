@@ -1,292 +1,58 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
-  <title>BS 대기실 모니터 (내부용) </title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>BS 보호자 모니터 (내부용)</title>
   <style>
-    :root{
-      --bg:#0b1220; --fg:#ffffff; --muted:#9ca3af;
-      --card:#111827cc; --border:#1f2937; --blur:8px;
-      --brand:#2b5fa3;
-      --s-red:#dc2626; --s-amber:#d97706; --s-sky:#0284c7; --s-green:#16a34a; --s-gray:#64748b;
-    }
-    html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto}
-    .topbar{
-      position:fixed; inset:0 0 auto 0; z-index:10;
-      display:flex; align-items:center; justify-content:space-between; gap:12px;
-      padding:10px 14px; background:var(--card); border-bottom:1px solid var(--border); backdrop-filter:blur(var(--blur));
-      font-size:12px;
-    }
-    .brandwrap{display:flex; align-items:center; gap:10px; font-weight:900}
-    .logo{width:22px;height:22px;border-radius:5px;object-fit:cover}
-    .brand{letter-spacing:.2px}
-    .right{display:flex;align-items:center;gap:8px}
-    .whoami{opacity:.8}
-    .tbtn{cursor:pointer;border:0;border-radius:8px;padding:6px 8px;background:#1f2937;color:#fff;border:1px solid #374151}
-    .tbtn.ok{background:var(--brand);border-color:transparent}
-    .pill{border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800;background:#1f2937;border:1px solid #374151}
-    .pill.ok{background:#16a34a}.pill.err{background:#dc2626}.pill.warn{background:#f59e0b;color:#111}
-
-    .wrap{min-height:100%;padding:64px 14px 20px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
-    .card{
-      background:var(--card); border:1px solid var(--border); border-radius:16px;
-      padding:14px; display:flex; flex-direction:column; gap:10px;
-    }
-    .card.call{outline:4px solid rgba(220,38,38,.6); outline-offset:-4px; animation:call 1.2s linear infinite}
-    @keyframes call{0%,100%{outline-color:rgba(220,38,38,.2)}50%{outline-color:rgba(220,38,38,.8)}}
-
-    .head{display:flex; align-items:center; justify-content:space-between; gap:10px}
-    .name{font-weight:900; font-size:18px; word-break:keep-all}
-    .badge{
-      border-radius:999px; padding:6px 10px; font-weight:900; font-size:12px; white-space:nowrap;
-      border:1px solid #374151; background:#1f2937; color:#fff;
-    }
-    .b-상담대기중{background:var(--s-red); border-color:transparent}
-    .b-원내대기중,.b-카페대기중{background:#ffd7a8; color:#111; border-color:transparent}
-    .b-외출중{background:#38bdf8; color:#111; border-color:transparent}
-    .b-카페콜완료,.b-외출콜완료{background:#22c55e; border-color:transparent}
-    .b-귀가,.b-수납후미귀가{background:#e5e7eb; color:#111; border-color:transparent}
-
-    /* ▼ 메모: 텍스트 길이만큼만 박스 */
-    .memo{
-      display:none;
-      font-size:14px; line-height:1.25; font-weight:800;
-      color:#111; background:#fde68a; border:1px solid #f59e0b;
-      padding:5px 8px; border-radius:10px;
-      display:inline-block; align-self:flex-start;
-      max-width:100%; overflow-wrap:anywhere;
-    }
-    .memo.show{ display:inline-block; }
-
-    .meta{font-size:12px; color:var(--muted)}
-
-    .actions{display:flex; gap:8px; flex-wrap:wrap}
-    .btn{cursor:pointer; border:0; border-radius:10px; padding:8px 12px; font-size:13px; font-weight:700;
-      background:#1f2937; color:#fff; border:1px solid #374151;}
-    .btn.ghost{background:transparent; color:#e5e7eb}
-
-    .errbox{display:none;background:#fee2e2;color:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700;white-space:pre-wrap}
-    .errbox.show{display:block}
+    :root{--bg:#0b1220;--fg:#fff;--muted:#9ca3af;--card:#111827cc;--border:#1f2937;--blur:8px;--brand:#2b5fa3;--red:#dc2626;--gray:#6b7280;}
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto;}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;padding:70px 14px;}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;}
+    .badge{border-radius:999px;padding:6px 10px;font-weight:800;font-size:12px}
+    .b-전달완료{background:var(--gray);color:#fff;}
+    .b-전달필요{background:var(--red);color:#fff;}
   </style>
 </head>
 <body>
-  <div class="topbar">
-    <div class="brandwrap">
-      <img class="logo" src="image-512.png" alt="BS Logo" />
-      <div class="brand">BS 대기실 모니터 (내부용) </div>
-    </div>
-    <div class="right">
-      <span id="whoami" class="whoami"></span>
-      <button id="loginBtn" class="tbtn ok">Google 로그인</button>
-      <button id="logoutBtn" class="tbtn" style="display:none">로그아웃</button>
-      <span id="conn" class="pill warn">연결 확인 중…</span>
-    </div>
-  </div>
-
-  <div class="wrap">
-    <div id="err" class="errbox"></div>
-    <div id="grid" class="grid"></div>
-  </div>
-
-  <audio id="ding" preload="auto">
-    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
-  </audio>
+  <div id="grid" class="grid"></div>
+  <audio id="ding" src="ding.mp3" preload="auto"></audio>
 
   <script type="module">
     const grid=document.getElementById('grid');
-    const conn=document.getElementById('conn');
+    const {initializeApp}=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+    const {getFirestore,collection,onSnapshot,query,orderBy,runTransaction,doc}=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    const app=initializeApp({apiKey:"AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4",authDomain:"bs-owner-monitor.firebaseapp.com",projectId:"bs-owner-monitor"});
+    const db=getFirestore(app);
+
     const ding=document.getElementById('ding');
-    const errBox=document.getElementById('err');
-    const whoami=document.getElementById('whoami');
-    const loginBtn=document.getElementById('loginBtn');
-    const logoutBtn=document.getElementById('logoutBtn');
+    const ring=async()=>{try{ding.currentTime=0;await ding.play();}catch{}}
 
-    const showErr=(m)=>{console.error(m);errBox.textContent=m;errBox.classList.add('show')};
-    const hideErr=()=>errBox.classList.remove('show');
+    function flash(el){if(document.hidden)return;el.style.outline="3px solid #dc2626";setTimeout(()=>el.style.outline="none",5000)}
 
-    const relTime=(ts)=>{if(!ts)return "";const s=Math.floor((Date.now()-ts)/1000);
-      if(s<60)return`${s}초 전`;const m=Math.floor(s/60);if(m<60)return`${m}분 전`;
-      const h=Math.floor(m/60);if(h<24)return`${h}시간 전`;const d=Math.floor(h/24);return`${d}일 전`};
-
-    // 오전/오후 h:mm 포맷
-    function formatKTime(ts){
-      if(!ts) return "";
-      const d=new Date(ts);
-      let h=d.getHours(), m=d.getMinutes();
-      const ampm = h<12 ? "오전" : "오후";
-      h = h%12 || 12;
-      const mm = String(m).padStart(2,"0");
-      return `${ampm} ${h}:${mm}`;
-    }
-
-    // 30초마다 상대시간 + 로컬시각 갱신
-    setInterval(()=>{document.querySelectorAll('[data-updated]').forEach(el=>{
-      const ts=Number(el.dataset.updated||0);
-      el.textContent = ts ? `업데이트: ${relTime(ts)} (${formatKTime(ts)})` : '';
-    });},30_000);
-
-    const badgeClass=(s)=>({
-      '상담대기중':'b-상담대기중',
-      '원내대기중':'b-원내대기중',
-      '카페대기중':'b-카페대기중',
-      '외출중':'b-외출중',
-      '카페콜완료':'b-카페콜완료',
-      '외출콜완료':'b-외출콜완료',
-      '귀가':'b-귀가',
-      '수납후미귀가':'b-수납후미귀가'
-    }[s]||'');
-
-    let auth, provider, db;
-
-    // ding 트리거 관리
-    let lastCall=new Set();           // callRequested 알림(기존)
-    const prevState=new Map();        // id -> 직전 location
-    const prevHasMemo=new Map();      // id -> 직전 memo 유무(boolean)
-    let inited=false;                 // 첫 스냅샷에는 소리 안 울림
-
-    try{
-      const { initializeApp }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-      const { getFirestore, collection, onSnapshot, query, orderBy, runTransaction, doc }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-      const { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut }=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
-
-      const firebaseConfig={apiKey:"AIzaSyDxhY_FjNOp_F0g-DXypaoN7RRjFqNIoG4",authDomain:"bs-owner-monitor.firebaseapp.com",projectId:"bs-owner-monitor"};
-      const app=initializeApp(firebaseConfig);
-      db=getFirestore(app);
-
-      auth=getAuth(app);
-      await setPersistence(auth, browserLocalPersistence).catch(e=>showErr('Persistence 설정 실패: '+e.message));
-      provider=new GoogleAuthProvider();
-      getRedirectResult(auth).catch(e=>showErr('리다이렉트 결과 오류: '+e.message));
-
-      async function doLogin(){
-        try{ await signInWithPopup(auth, provider); }
-        catch(e){
-          if(e?.code==='auth/operation-not-supported-in-this-environment' || String(e?.message||'').includes('popup')){
-            showErr('팝업 로그인 불가 → 리다이렉트 로그인으로 진행합니다.');
-            await signInWithRedirect(auth, provider);
-            return;
-          }
-          showErr('로그인 실패: '+(e.code||'')+' '+e.message);
+    onSnapshot(query(collection(db,"cases"),orderBy("createdAt","desc")),(snap)=>{
+      grid.innerHTML="";
+      snap.forEach(x=>{
+        const d=x.data(),c=document.createElement('div'); c.className='card';
+        c.innerHTML=`<div style="font-weight:900">${d.patientName||d.guardianName}</div>
+                     <div class="badge ${d.location==='전달필요'?'b-전달필요':d.location==='전달완료'?'b-전달완료':''}">${d.location}</div>`;
+        if((d.location==="상담대기중"||d.location==="면회대기중")&&!d.ackConfirmed){
+          ring(); flash(c);
         }
-      }
-      loginBtn.onclick=doLogin;
-      logoutBtn.onclick=async()=>{ try{ await signOut(auth); }catch(e){ showErr('로그아웃 실패: '+e.message);} };
-
-      onAuthStateChanged(auth,(user)=>{
-        if(user){ whoami.textContent=user.email; logoutBtn.style.display=''; loginBtn.style.display='none'; }
-        else{ whoami.textContent=''; logoutBtn.style.display='none'; loginBtn.style.display=''; }
+        if(d.location==="전달필요"||d.location==="전달완료"){
+          c.onclick=()=>toggleRelay(x.id,d.location);
+        }
+        grid.appendChild(c);
       });
+    });
 
-      conn.textContent="연결됨";conn.className="pill ok";
-
-      onSnapshot(query(collection(db,"cases"),orderBy("createdAt","desc")),(snap)=>{
-        hideErr();
-        let docs=snap.docs.map(d=>({id:d.id,...d.data()}));
-
-        // 정렬: 상담대기중 ↑, 귀가/수납후미귀가 ↓, 나머지는 createdAt desc
-        docs.sort((a,b)=>{
-          const order=(d)=> d.location==="상담대기중"?0 : (d.location==="귀가"||d.location==="수납후미귀가")?2 : 1;
-          const oa=order(a), ob=order(b);
-          if(oa!==ob) return oa-ob;
-          return (b.createdAt||0)-(a.createdAt||0);
-        });
-
-        const frag=document.createDocumentFragment();
-
-        docs.forEach(d=>{
-          // --- 소리 트리거 계산 (변경 감지) ---
-          let shouldDing=false;
-          const curState = d.location||"";
-          const curHasMemo = !!((d.memo||"").trim());
-
-          if(inited){
-            // 1) callRequested 새로 true → 기존 로직 유지
-            if(d.callRequested && !lastCall.has(d.id)) shouldDing=true;
-
-            // 2) 상태가 상담대기중으로 "변경"되었을 때
-            const prevS = prevState.get(d.id);
-            if(curState==="상담대기중" && prevS!=="상담대기중") shouldDing=true;
-
-            // 3) 메모가 "추가"되었을 때 (빈→내용)
-            const prevM = prevHasMemo.get(d.id);
-            if(curHasMemo && !prevM) shouldDing=true;
-          }
-
-          // callRequested 집합 관리(기존)
-          if(d.callRequested) lastCall.add(d.id); else lastCall.delete(d.id);
-
-          if(shouldDing){
-            try{ ding.currentTime=0; ding.play().catch(()=>{});}catch(e){}
-          }
-
-          // 상태 기록 갱신
-          prevState.set(d.id, curState);
-          prevHasMemo.set(d.id, curHasMemo);
-
-          // --- 카드 렌더 ---
-          const card=document.createElement('div');card.className='card';
-          if(d.callRequested) card.classList.add('call');
-
-          const head=document.createElement('div');head.className='head';
-          const name=document.createElement('div');name.className='name';
-          name.textContent=(d.patientName||d.guardianName)
-            ?(d.patientName&&d.guardianName?`${d.patientName}(${d.guardianName})`:(d.patientName||d.guardianName))
-            :d.id;
-          const badge=document.createElement('span');badge.className='badge '+badgeClass(curState);
-          badge.textContent=curState||'상태없음';
-          head.appendChild(name);head.appendChild(badge);
-          card.appendChild(head);
-
-          const memoTxt=(d.memo||"").trim();
-          if(memoTxt){
-            const memo=document.createElement('div');memo.className='memo show';
-            memo.textContent=memoTxt.length>140?memoTxt.slice(0,137)+'…':memoTxt;
-            card.appendChild(memo);
-          }
-
-          const meta=document.createElement('div');meta.className='meta';
-          meta.dataset.updated=d.updatedAt||0;
-          meta.textContent=d.updatedAt?`업데이트: ${relTime(d.updatedAt)} (${formatKTime(d.updatedAt)})`:'';
-          card.appendChild(meta);
-
-          const actions=document.createElement('div');actions.className='actions';
-          const callBtn=document.createElement('button');callBtn.className='btn';callBtn.textContent='📣 콜요청하기';
-          const cancelBtn=document.createElement('button');cancelBtn.className='btn ghost';cancelBtn.textContent='콜요청취소';
-          callBtn.onclick=()=> requireLoginThen(()=>updateCase(d.id,{callRequested:true,callRequestedAt:Date.now()}));
-          cancelBtn.onclick=()=> requireLoginThen(()=>updateCase(d.id,{callRequested:false}));
-          actions.appendChild(callBtn);actions.appendChild(cancelBtn);
-          card.appendChild(actions);
-
-          frag.appendChild(card);
-        });
-
-        grid.innerHTML='';grid.appendChild(frag);
-        // 첫 스냅샷 처리 완료 후부터 변경 감지 활성화
-        if(!inited) inited=true;
-      },(e)=>{conn.textContent='연결 오류';conn.className='pill err';showErr('리스트 구독 실패: '+e.message);});
-
-      function requireLoginThen(fn){
-        if(auth.currentUser){ fn(); return; }
-        showErr('이 작업은 로그인 후 가능합니다. 로그인 창을 열게요.');
-        doLogin();
-      }
-
-      async function updateCase(id,data){
-        try{
-          await runTransaction(db,async(tx)=>{
-            const ref=doc(db,"cases",id);
-            const snap=await tx.get(ref);
-            const prev=snap.exists()?snap.data():{version:0};
-            tx.set(ref,{...data,updatedAt:Date.now(),version:(prev.version||0)+1},{merge:true});
-          });
-        }catch(e){showErr("저장 실패: "+(e.code||'')+' '+e.message);}
-      }
-
-    }catch(e){
-      conn.textContent='초기화 오류';conn.className='pill err';
-      showErr('Firebase 초기화 실패: '+(e.message||e));
+    async function toggleRelay(id,state){
+      const ref=doc(db,"cases",id);
+      const newState=(state==="전달필요")?"전달완료":"전달필요";
+      await runTransaction(db,async(tx)=>{
+        const snap=await tx.get(ref);const prev=snap.data();
+        tx.set(ref,{location:newState,ackConfirmed:(newState==="전달완료"),updatedAt:Date.now(),version:(prev.version||0)+1},{merge:true});
+      });
     }
   </script>
 </body>
