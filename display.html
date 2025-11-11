@@ -92,6 +92,13 @@
     .modal{will-change:transform; transform:translateZ(0);}
     .btn.ghost{ background:#1f2937; border:1px solid #4b5563; opacity:.9 }
     .btn.ghost:active{ transform: translateY(1px); }
+
+    .card.pending-ack {
+  outline: 4px solid rgba(220,38,38,.8);
+  outline-offset: -4px;
+  animation: call 1s infinite;
+}
+
   </style>
 </head>
 <body>
@@ -407,11 +414,39 @@ ringWithFallback('상태 알림', `${nm}: ${state}`, 'case-update');
           prevState.set(d.id,curState);
           prevHasMemo.set(d.id,curHasMemo);
 
-          // === 카드 DOM ===
-          const card=document.createElement('div');
-          card.className='card';
-          card.dataset.id = d.id;                             // ✅ 테두리 적용을 위한 data-id
-          if(d.callRequested) card.classList.add('call');     // 콜요청 고정 테두리
+// === 카드 DOM ===
+const card = document.createElement('div');
+card.className = 'card';
+card.dataset.id = d.id; // 카드 식별용
+
+// 콜요청: 고정 테두리 유지
+if (d.callRequested) {
+  card.classList.add('call');
+}
+
+// 🔴 상담/면회 대기 + 아직 유효한 전달완료가 없는 경우 = 점멸 유지
+const isWaitState =
+  (curState === "상담대기중" || curState === "면회대기중");
+
+const reqAt = Number(d.ackRequestedAt || 0);
+const resolvedAt = Number(d.ackResolvedAt || 0);
+
+// "전달 안 된 상태"라고 보는 조건:
+// 1) 상담/면회 상태이고
+// 2) 전달요청 시각(ackRequestedAt)이 있고
+// 3) 그 이후를 덮는 ackResolvedAt이 없다
+//
+// → 한 번이라도 '확인' 눌러서 ackResolvedAt >= ackRequestedAt 이면,
+//   이후 리셋(ackConfirmed:false)되더라도 다시 점멸하지 않음.
+const needsAck =
+  isWaitState &&
+  reqAt > 0 &&
+  (resolvedAt === 0 || resolvedAt < reqAt);
+
+if (needsAck) {
+  card.classList.add('pending-ack');
+}
+
 
           const head=document.createElement('div');head.className='head';
           const name=document.createElement('div');name.className='name';
