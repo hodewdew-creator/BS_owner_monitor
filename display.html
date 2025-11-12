@@ -211,7 +211,6 @@ if (soundBtn){
 }
 // 브라우저 시작 시 권한이 이미 granted면 그대로, 아니면 나중에 ring 시 요청
 
-    
     // ---- Device name resolve & persist ----
     function resolveDeviceName(){
       try{
@@ -227,7 +226,9 @@ if (soundBtn){
     }
     const DEVICE_NAME = resolveDeviceName();
 
-    
+    // 콜 카운트다운 타이머 보관
+    if (!window._pendingCallTimers) window._pendingCallTimers = new Map();
+
     const showErr=(m)=>{console.error(m);errBox.textContent=m;errBox.classList.add('show')};
     const hideErr=()=>errBox.classList.remove('show');
 
@@ -407,7 +408,11 @@ if (soundBtn){
   ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName))
   : d.id;
 const state = (d.location||'상태변경');
-ringWithFallback('상태 알림', `${nm}: ${state}`, 'case-update');
+// 내가 보낸 콜이면(같은 디스플레이) 내 화면에선 중복 딩 생략
+const initiatedByMe = d.callRequested && d.callRequestedBy === DEVICE_NAME;
+if (!initiatedByMe) {
+  ringWithFallback('상태 알림', `${nm}: ${state}`, 'case-update');
+}
 
           }
 
@@ -472,8 +477,73 @@ if (needsAck) {
           const actions=document.createElement('div');actions.className='actions';
           const callBtn=document.createElement('button');callBtn.className='btn';callBtn.textContent='📣 콜요청하기';
           const cancelBtn=document.createElement('button');cancelBtn.className='btn ghost';cancelBtn.textContent='콜요청취소';
-        callBtn.onclick=()=> requireLoginThen(()=>updateCase(d.id,{callRequested:true,callRequestedAt:Date.now(),callRequestedBy:DEVICE_NAME}));
-          cancelBtn.onclick=()=> requireLoginThen(()=>updateCase(d.id,{callRequested:false}));
+
+// 📣 콜요청: 3→2→1 카운트다운 후 전송
+callBtn.onclick = () => requireLoginThen(() => {
+  // 중복 클릭/중복 타이머 방지
+  if (window._pendingCallTimers.has(d.id)) return;
+
+  // 1) 즉시 짧게 딩(클릭감) — 내 화면만
+  ringWithFallback('콜 요청 카운트다운', '3초 후 리셉으로 전달됩니다.');
+
+  // 2) 버튼 상태 진입
+  const originalText = callBtn.textContent;
+  let sec = 3;
+  callBtn.disabled = true;
+  callBtn.textContent = `⏳ ${sec}초 후 전송`;
+
+  // 3) 1초마다 카운트다운
+  const t = setInterval(() => {
+    sec--;
+    if (sec > 0) {
+      callBtn.textContent = `⏳ ${sec}초 후 전송`;
+    } else {
+      clearInterval(t);
+      window._pendingCallTimers.delete(d.id);
+
+      callBtn.textContent = '전송 중...';
+      // 4) 실제 DB 전송 (누가 보냈는지 기록)
+      updateCase(d.id, {
+        callRequested: true,
+        callRequestedAt: Date.now(),
+        callRequestedBy: DEVICE_NAME
+      }).then(() => {
+        callBtn.textContent = '✅ 전송 완료';
+        setTimeout(() => {
+          callBtn.textContent = originalText;
+          callBtn.disabled = false;
+        }, 1200);
+      }).catch((e) => {
+        callBtn.textContent = '❌ 실패 (다시 시도)';
+        setTimeout(() => {
+          callBtn.textContent = originalText;
+          callBtn.disabled = false;
+        }, 1500);
+      });
+    }
+  }, 1000);
+
+  // 타이머 보관 (취소 버튼이 중간에 끊을 수 있게)
+  window._pendingCallTimers.set(d.id, { timer: t, originalText });
+});
+
+// 🧹 콜요청취소: (1) 카운트다운 중이면 타이머만 취소/원복, (2) 이미 전송된 뒤면 DB에서 callRequested 해제
+cancelBtn.onclick = () => requireLoginThen(() => {
+  const pending = window._pendingCallTimers.get(d.id);
+  if (pending) {
+    // 카운트다운 단계에서의 취소 → 실제 전송 막기
+    clearInterval(pending.timer);
+    window._pendingCallTimers.delete(d.id);
+    callBtn.textContent = pending.originalText;
+    callBtn.disabled = false;
+    // 필요하면 여기서도 짧은 취소 딩
+    // ringWithFallback('콜 요청 취소됨', '전송되지 않았습니다.');
+    return;
+  }
+  // 이미 전송된 뒤의 일반 취소
+  updateCase(d.id, { callRequested: false });
+});
+
           actions.appendChild(callBtn);actions.appendChild(cancelBtn);
           card.appendChild(actions);
 
