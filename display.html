@@ -94,10 +94,10 @@
     .btn.ghost:active{ transform: translateY(1px); }
 
     .card.pending-ack {
-      outline: 4px solid rgba(220,38,38,.8);
-      outline-offset: -4px;
-      animation: call 1s infinite;
-    }
+  outline: 4px solid rgba(220,38,38,.8);
+  outline-offset: -4px;
+  animation: call 1s infinite;
+}
 
   </style>
 </head>
@@ -146,58 +146,70 @@
     const logoutBtn=document.getElementById('logoutBtn');
 
     // ===== 소리/알림 토글 & 통합 울림 유틸 =====
-    const soundBtn = document.getElementById('soundBtn');
+const soundBtn = document.getElementById('soundBtn');
 
-    function isHidden(){ return document.hidden === true; }
-    function isSoundOn(){
-      try{ return localStorage.getItem('soundOn') !== '0'; }catch(e){ return true; } // 기본: 켬
+function isHidden(){ return document.hidden === true; }
+function isSoundOn(){
+  try{ return localStorage.getItem('soundOn') !== '0'; }catch(e){ return true; } // 기본: 켬
+}
+function setSound(on){
+  try{ localStorage.setItem('soundOn', on ? '1' : '0'); }catch(e){}
+  updateSoundUI();
+}
+function updateSoundUI(){
+  const on = isSoundOn();
+  if(!soundBtn) return;
+  soundBtn.textContent = on ? '🔊' : '🔇';
+  soundBtn.title = on ? '소리: 켬' : '소리: 끔';
+  soundBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+}
+
+function canSystemNotify(){ return 'Notification' in window; }
+async function ensureNotifyPermissionIfNeeded(){
+  if(!canSystemNotify()) return false;
+  // 권한이 없는데 창이 숨김 상태면 시스템 알림이 막혀서 울리지 않을 수 있음 → 미리 요청
+  if(Notification.permission === 'granted') return true;
+  if(Notification.permission === 'denied') return false;
+  const res = await Notification.requestPermission();
+  return res === 'granted';
+}
+
+/** 소리/알림 통합 울림
+ * - 켬(🔊)일 때만 동작
+ * - 보이는 중: ding.mp3 재생
+ * - 숨김/최소화: ding 재생 + 시스템 알림(윈도우 기본 효과음 기대)
+ */
+async function ringWithFallback(title, body, tag='bs-owner-monitor'){
+  if(!isSoundOn()) return; // 🔇이면 무음
+  // 1) 사운드 시도
+  try{ ding.currentTime = 0; await ding.play(); }catch(e){ /* 브라우저 정책에 따라 무시될 수 있음 */ }
+
+  // 2) 숨김(백그라/최소화)일 때 시스템 알림도
+  if(isHidden() && canSystemNotify()){
+    const ok = await ensureNotifyPermissionIfNeeded();
+    if(ok){
+      new Notification(title, {
+        body, tag, renotify:true, requireInteraction:true, timestamp:Date.now(), silent:false
+      });
     }
-    function setSound(on){
-      try{ localStorage.setItem('soundOn', on ? '1' : '0'); }catch(e){}
+  }
+}
+
+// 토글 버튼 클릭
+if (soundBtn){
+  soundBtn.onclick = async ()=>{
+    const next = !isSoundOn();
+    setSound(next);
+    // 켬으로 바꾸는 순간, 최소화 대응 위해 권한 미리 확보 시도(거부해도 동작은 유지)
+    if(next && canSystemNotify() && Notification.permission !== 'granted'){
+      await ensureNotifyPermissionIfNeeded();
       updateSoundUI();
     }
-    function updateSoundUI(){
-      const on = isSoundOn();
-      if(!soundBtn) return;
-      soundBtn.textContent = on ? '🔊' : '🔇';
-      soundBtn.title = on ? '소리: 켬' : '소리: 끔';
-      soundBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-    }
-
-    function canSystemNotify(){ return 'Notification' in window; }
-    async function ensureNotifyPermissionIfNeeded(){
-      if(!canSystemNotify()) return false;
-      if(Notification.permission === 'granted') return true;
-      if(Notification.permission === 'denied') return false;
-      const res = await Notification.requestPermission();
-      return res === 'granted';
-    }
-
-    /** 소리/알림 통합 울림 */
-    async function ringWithFallback(title, body, tag='bs-owner-monitor'){
-      if(!isSoundOn()) return;
-      try{ ding.currentTime = 0; await ding.play(); }catch(e){}
-      if(isHidden() && canSystemNotify()){
-        const ok = await ensureNotifyPermissionIfNeeded();
-        if(ok){
-          new Notification(title, {
-            body, tag, renotify:true, requireInteraction:true, timestamp:Date.now(), silent:false
-          });
-        }
-      }
-    }
-
-    if (soundBtn){
-      soundBtn.onclick = async ()=>{
-        const next = !isSoundOn();
-        setSound(next);
-        if(next && canSystemNotify() && Notification.permission !== 'granted'){
-          await ensureNotifyPermissionIfNeeded();
-          updateSoundUI();
-        }
-      };
-      updateSoundUI();
-    }
+  };
+  // 초기 UI 동기화
+  updateSoundUI();
+}
+// 브라우저 시작 시 권한이 이미 granted면 그대로, 아니면 나중에 ring 시 요청
 
     // ---- Device name resolve & persist ----
     function resolveDeviceName(){
@@ -216,14 +228,6 @@
 
     // 콜 카운트다운 타이머 보관
     if (!window._pendingCallTimers) window._pendingCallTimers = new Map();
-
-    // 탭 복귀 시각 기록: 이 시각 이전 변화는 점멸/소리 제외
-    window._lastVisibleAt = Date.now();
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) {
-        window._lastVisibleAt = Date.now();
-      }
-    });
 
     const showErr=(m)=>{console.error(m);errBox.textContent=m;errBox.classList.add('show')};
     const hideErr=()=>errBox.classList.remove('show');
@@ -371,7 +375,7 @@
           return (b.createdAt||0)-(a.createdAt||0);
         });
 
-        const toFlashSolid = []; // 이번 프레임에서 5~6초 붉은 테두리 줄 대상
+        const toFlashSolid = []; // ✅ 이번 프레임에서 5~6초 붉은 테두리 줄 대상
         docs.forEach(d=>{
           let shouldDing=false;
           const curState=d.location||"";
@@ -385,65 +389,69 @@
             if(curHasMemo && !pm) shouldDing=true;                                       // 메모 신규
           }
 
-          // === 과거(탭 숨김 중) 이벤트 스킵 게이트 ===
-          let eventTs = 0;
-          if (inited) {
-            if (d.callRequested && !lastCall.has(d.id)) {
-              eventTs = Number(d.callRequestedAt||d.updatedAt||0);
-            } else {
-              const enteredWait = (curState==="상담대기중"||curState==="면회대기중") && (prevState.get(d.id)!==curState);
-              if (enteredWait) eventTs = Number(d.ackRequestedAt||d.updatedAt||0);
-              else if (curHasMemo && !prevHasMemo.get(d.id)) eventTs = Number(d.updatedAt||0);
-            }
-          }
-          const isFreshEvent = !window._lastVisibleAt || (eventTs >= window._lastVisibleAt);
-          if (shouldDing && !isFreshEvent) {
-            shouldDing = false; // 뒷북 점멸/소리 제거
-          }
-
           // 콜요청 집합 갱신
           if(d.callRequested) lastCall.add(d.id); else lastCall.delete(d.id);
 
-          // 소리/점멸 처리
+          // 🔔 소리 트리거가 났고, "콜 새로 켜짐"이 아닌 경우 → 5~6초 붉은 테두리
+          const isNewCall = (d.callRequested && !inited && false) || (d.callRequested && !prevState.has(d.id)) ? false
+                            : (d.callRequested && !window._lastCall.has(d.id)); // 보호적 계산
+          // 위 한 줄은 방어적이지만, 실제로는 아래처럼 간단히:
+          // const isNewCall = (d.callRequested && !window._lastCall.has(d.id));
+
           if(shouldDing){
+            // 새 콜이 아니라면(= 상담/면회 진입 또는 메모 신규), 잠시 붉은 테두리
             const newCallNow = (d.callRequested && !window._lastCall.has(d.id));
             if(!newCallNow){
-              if (isFreshEvent) toFlashSolid.push(d.id); // 신선 이벤트에만 테두리
+              toFlashSolid.push(d.id);
             }
-
             const nm = (d.patientName||d.guardianName)
-              ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName))
-              : d.id;
-            const state = (d.location||'상태변경');
+  ? (d.patientName && d.guardianName ? `${d.patientName}(${d.guardianName})` : (d.patientName||d.guardianName))
+  : d.id;
+const state = (d.location||'상태변경');
+// 내가 보낸 콜이면(같은 디스플레이) 내 화면에선 중복 딩 생략
+const initiatedByMe = d.callRequested && d.callRequestedBy === DEVICE_NAME;
+if (!initiatedByMe) {
+  ringWithFallback('상태 알림', `${nm}: ${state}`, 'case-update');
+}
 
-            // 내가 보낸 콜이면(같은 디스플레이) 내 화면에선 중복 딩 생략
-            const initiatedByMe = d.callRequested && d.callRequestedBy === DEVICE_NAME;
-            if (!initiatedByMe && isFreshEvent) {
-              ringWithFallback('상태 알림', `${nm}: ${state}`, 'case-update');
-            }
           }
 
           prevState.set(d.id,curState);
           prevHasMemo.set(d.id,curHasMemo);
 
-          // === 카드 DOM ===
-          const card = document.createElement('div');
-          card.className = 'card';
-          card.dataset.id = d.id; // 카드 식별용
+// === 카드 DOM ===
+const card = document.createElement('div');
+card.className = 'card';
+card.dataset.id = d.id; // 카드 식별용
 
-          // 콜요청: 고정 테두리 유지
-          if (d.callRequested) {
-            card.classList.add('call');
-          }
+// 콜요청: 고정 테두리 유지
+if (d.callRequested) {
+  card.classList.add('call');
+}
 
-          // 상담/면회 대기 + 아직 유효한 전달완료가 없는 경우 = 점멸 유지
-          const isWaitState = (curState === "상담대기중" || curState === "면회대기중");
-          const reqAt = Number(d.ackRequestedAt || 0);
-          const resolvedAt = Number(d.ackResolvedAt || 0);
-          const needsAck = isWaitState && reqAt > 0 && (resolvedAt === 0 || resolvedAt < reqAt);
-          if (needsAck) {
-            card.classList.add('pending-ack');
-          }
+// 🔴 상담/면회 대기 + 아직 유효한 전달완료가 없는 경우 = 점멸 유지
+const isWaitState =
+  (curState === "상담대기중" || curState === "면회대기중");
+
+const reqAt = Number(d.ackRequestedAt || 0);
+const resolvedAt = Number(d.ackResolvedAt || 0);
+
+// "전달 안 된 상태"라고 보는 조건:
+// 1) 상담/면회 상태이고
+// 2) 전달요청 시각(ackRequestedAt)이 있고
+// 3) 그 이후를 덮는 ackResolvedAt이 없다
+//
+// → 한 번이라도 '확인' 눌러서 ackResolvedAt >= ackRequestedAt 이면,
+//   이후 리셋(ackConfirmed:false)되더라도 다시 점멸하지 않음.
+const needsAck =
+  isWaitState &&
+  reqAt > 0 &&
+  (resolvedAt === 0 || resolvedAt < reqAt);
+
+if (needsAck) {
+  card.classList.add('pending-ack');
+}
+
 
           const head=document.createElement('div');head.className='head';
           const name=document.createElement('div');name.className='name';
@@ -470,64 +478,71 @@
           const callBtn=document.createElement('button');callBtn.className='btn';callBtn.textContent='📣 콜요청하기';
           const cancelBtn=document.createElement('button');cancelBtn.className='btn ghost';cancelBtn.textContent='콜요청취소';
 
-          // 📣 콜요청: 3→2→1 카운트다운 후 전송
-          callBtn.onclick = () => requireLoginThen(() => {
-            if (window._pendingCallTimers.has(d.id)) return;
+// 📣 콜요청: 3→2→1 카운트다운 후 전송
+callBtn.onclick = () => requireLoginThen(() => {
+  // 중복 클릭/중복 타이머 방지
+  if (window._pendingCallTimers.has(d.id)) return;
 
-            // 즉시 짧게 딩(로컬 피드백)
-            ringWithFallback('콜 요청 카운트다운', '3초 후 리셉으로 전달됩니다.');
+  // 1) 즉시 짧게 딩(클릭감) — 내 화면만
+  ringWithFallback('콜 요청 카운트다운', '3초 후 리셉으로 전달됩니다.');
 
-            const originalText = callBtn.textContent;
-            let sec = 3;
-            callBtn.disabled = true;
-            callBtn.textContent = `⏳ ${sec}초 후 전송`;
+  // 2) 버튼 상태 진입
+  const originalText = callBtn.textContent;
+  let sec = 3;
+  callBtn.disabled = true;
+  callBtn.textContent = `⏳ ${sec}초 후 전송`;
 
-            const t = setInterval(() => {
-              sec--;
-              if (sec > 0) {
-                callBtn.textContent = `⏳ ${sec}초 후 전송`;
-              } else {
-                clearInterval(t);
-                window._pendingCallTimers.delete(d.id);
+  // 3) 1초마다 카운트다운
+  const t = setInterval(() => {
+    sec--;
+    if (sec > 0) {
+      callBtn.textContent = `⏳ ${sec}초 후 전송`;
+    } else {
+      clearInterval(t);
+      window._pendingCallTimers.delete(d.id);
 
-                callBtn.textContent = '전송 중...';
-                updateCase(d.id, {
-                  callRequested: true,
-                  callRequestedAt: Date.now(),
-                  callRequestedBy: DEVICE_NAME
-                }).then(() => {
-                  callBtn.textContent = '✅ 전송 완료';
-                  setTimeout(() => {
-                    callBtn.textContent = originalText;
-                    callBtn.disabled = false;
-                  }, 1200);
-                }).catch(() => {
-                  callBtn.textContent = '❌ 실패 (다시 시도)';
-                  setTimeout(() => {
-                    callBtn.textContent = originalText;
-                    callBtn.disabled = false;
-                  }, 1500);
-                });
-              }
-            }, 1000);
+      callBtn.textContent = '전송 중...';
+      // 4) 실제 DB 전송 (누가 보냈는지 기록)
+      updateCase(d.id, {
+        callRequested: true,
+        callRequestedAt: Date.now(),
+        callRequestedBy: DEVICE_NAME
+      }).then(() => {
+        callBtn.textContent = '✅ 전송 완료';
+        setTimeout(() => {
+          callBtn.textContent = originalText;
+          callBtn.disabled = false;
+        }, 1200);
+      }).catch((e) => {
+        callBtn.textContent = '❌ 실패 (다시 시도)';
+        setTimeout(() => {
+          callBtn.textContent = originalText;
+          callBtn.disabled = false;
+        }, 1500);
+      });
+    }
+  }, 1000);
 
-            window._pendingCallTimers.set(d.id, { timer: t, originalText });
-          });
+  // 타이머 보관 (취소 버튼이 중간에 끊을 수 있게)
+  window._pendingCallTimers.set(d.id, { timer: t, originalText });
+});
 
-          // 🧹 콜요청취소: 카운트다운 중이면 타이머만 취소/원복, 이미 전송된 뒤면 DB 해제
-          cancelBtn.onclick = () => requireLoginThen(() => {
-            const pending = window._pendingCallTimers.get(d.id);
-            if (pending) {
-              clearInterval(pending.timer);
-              window._pendingCallTimers.delete(d.id);
-              callBtn.textContent = pending.originalText;
-              callBtn.disabled = false;
-              // 필요 시 취소 딩:
-              // ringWithFallback('콜 요청 취소됨', '전송되지 않았습니다.');
-              return;
-            }
-            updateCase(d.id, { callRequested: false });
-          });
+// 🧹 콜요청취소: (1) 카운트다운 중이면 타이머만 취소/원복, (2) 이미 전송된 뒤면 DB에서 callRequested 해제
+cancelBtn.onclick = () => requireLoginThen(() => {
+  const pending = window._pendingCallTimers.get(d.id);
+  if (pending) {
+    // 카운트다운 단계에서의 취소 → 실제 전송 막기
+    clearInterval(pending.timer);
+    window._pendingCallTimers.delete(d.id);
+    callBtn.textContent = pending.originalText;
+    callBtn.disabled = false;
+    // 필요하면 여기서도 짧은 취소 딩
+    // ringWithFallback('콜 요청 취소됨', '전송되지 않았습니다.');
+    return;
+  }
+  // 이미 전송된 뒤의 일반 취소
+  updateCase(d.id, { callRequested: false });
+});
 
           actions.appendChild(callBtn);actions.appendChild(cancelBtn);
           card.appendChild(actions);
@@ -539,7 +554,7 @@
         gridEl.innerHTML='';
         gridEl.appendChild(frag);
 
-        // 렌더 완료 후, 상담/면회/메모 신규였던 카드들만 5~6초 붉은 테두리
+        // ✅ 렌더 완료 후, 상담/면회/메모 신규였던 카드들만 5~6초 붉은 테두리
         requestAnimationFrame(()=>{
           toFlashSolid.forEach(id => flashSolidById(id));
         });
@@ -566,10 +581,11 @@
       }
 
       // ▶ 팝업 버튼: ‘확인’은 전송, ‘보류/X’는 단순 닫기
-      async function confirmAckAndClose(){
+     async function confirmAckAndClose(){
         if(!modalTargetId) return;
         try{
-          await updateCase(modalTargetId,{ ackConfirmed:true, ackDevice: DEVICE_NAME, ackAt: Date.now(), ackResolvedAt: Date.now() });
+   await updateCase(modalTargetId,{ ackConfirmed:true, ackDevice: DEVICE_NAME, ackAt: Date.now(), ackResolvedAt: Date.now() });
+
           lastSeenReqAt.set(modalTargetId, modalTargetReqAt||Date.now());
           closeAck();
           modalTargetId=null;
@@ -577,7 +593,9 @@
           showErr('확인 전송 실패: '+(e.code||'')+' '+e.message);
         }
       }
+      // 확인 = 전송
       ackConfirm.onclick = ()=> requireLoginThen(confirmAckAndClose);
+      // 보류 = 단순 닫기
       ackHold.onclick    = ()=>{
         try{
           if(modalTargetId && modalTargetReqAt){
@@ -587,6 +605,7 @@
         closeAck();
         modalTargetId=null;
       };
+      // X = 보류와 동일
       ackClose.onclick   = ()=>{
         closeAck();
         modalTargetId=null;
