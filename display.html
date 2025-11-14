@@ -338,23 +338,60 @@ if (soundBtn){
           }
         }
 
-        // 새 요청 탐지 → 팝업 (상담/면회만)
-        if (!modalTargetId) {
-          const cands = docs.filter(d=>{
-            const s=d.location||'';
-            const reqAt = Number(d.ackRequestedAt||0);
-            const seen  = lastSeenReqAt.get(d.id)||0;
-            const held = (function(){ try{ return localStorage.getItem(holdKey(d.id, reqAt))==='1'; }catch(e){ return false; } })();
-            return (s==="상담대기중"||s==="면회대기중") && reqAt>0 && !d.ackConfirmed && reqAt>seen && !held;
-          });
-          if (cands.length){
-            cands.sort((a,b)=>(a.ackRequestedAt||0)-(b.ackRequestedAt||0));
-            const p = cands[0];
-            const nm = (p.patientName||p.guardianName)
-              ? (p.patientName && p.guardianName ? `${p.patientName}(${p.guardianName})` : (p.patientName||p.guardianName)) : p.id;
-            openAck(nm, p.id, p.ackRequestedAt);
-          }
-        }
+// ✅ 새 대기 팝업 후보 찾기
+//  - 상담/면회 상태
+//  - ackRequestedAt 이 있음
+//  - 아직 한 번도 "완전히 해결된 적 없는" 요청만 (ackResolvedAt < ackRequestedAt 인 경우만)
+//  - 이 디스플레이에서 아직 본 적 없는 reqAt (lastSeenReqAt 보다 큼)
+//  - 이 디스플레이에서 "보류"로 표시하지 않은 경우
+if (!modalTargetId) {
+  const cands = docs.filter(d => {
+    const s = d.location || '';
+    const reqAt = Number(d.ackRequestedAt || 0);
+    const resolvedAt = Number(d.ackResolvedAt || 0);
+    const seen = lastSeenReqAt.get(d.id) || 0;
+
+    const held = (function () {
+      try {
+        return localStorage.getItem(holdKey(d.id, reqAt)) === '1';
+      } catch (e) {
+        return false;
+      }
+    })();
+
+    const isWaitState =
+      s === '상담대기중' || s === '면회대기중';
+
+    // 🔴 "아직 전달이 안 된 요청"만 팝업 후보로 본다.
+    //   → 누군가 한번이라도 '확인'을 누른 순간 ackResolvedAt 이 찍히고,
+    //      그 시점 이후에는 이 요청은 다시 팝업 대상이 되지 않음.
+    const isUnresolved =
+      reqAt > 0 && (resolvedAt === 0 || resolvedAt < reqAt);
+
+    return (
+      isWaitState &&
+      isUnresolved &&          // ← 이 줄이 핵심!
+      !d.ackConfirmed &&       // (리셉션에서 5초 동안 true였다가 false로 돌아가더라도,
+                               //  ackResolvedAt 이 남아있으면 다시 후보로 안 들어옴)
+      reqAt > seen &&
+      !held
+    );
+  });
+
+  if (cands.length) {
+    // 가장 오래된 요청부터 처리
+    cands.sort((a, b) => (a.ackRequestedAt || 0) - (b.ackRequestedAt || 0));
+    const p = cands[0];
+    const nm = (p.patientName || p.guardianName)
+      ? (p.patientName && p.guardianName
+          ? `${p.patientName}(${p.guardianName})`
+          : (p.patientName || p.guardianName))
+      : p.id;
+
+    openAck(nm, p.id, p.ackRequestedAt);
+  }
+}
+
 
         // 카드 렌더 및 알림 트리거 계산 준비
         const frag=document.createDocumentFragment();
