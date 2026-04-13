@@ -517,7 +517,7 @@ if (needsAck) {
           name.textContent=(d.patientName||d.guardianName)
             ?(d.patientName&&d.guardianName?`${d.patientName}(${d.guardianName})`:(d.patientName||d.guardianName))
             :d.id;
-          const badge=document.createElement('span');badge.className='badge '+(badgeClass(curState)||''); badge.textContent=curState||'상태없음';
+const badge=document.createElement('span');badge.className='badge '+(badgeClass(curState)||''); badge.textContent = curState === '라운지' ? '라운지☕' : (curState || '상태없음');
           head.appendChild(name); head.appendChild(badge);
           card.appendChild(head);
 
