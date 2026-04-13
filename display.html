@@ -53,7 +53,7 @@
     }
     .b-상담대기중{background:var(--s-red); border-color:transparent}
     .b-면회대기중{background:var(--s-red); border-color:transparent; color:#fff;}
-    .b-원내,.b-라운지☕{background:#FFD9DF; color:#111; border-color:transparent}
+    .b-원내,.b-라운지{background:#FFD9DF; color:#111; border-color:transparent}
     .b-외출{background:#C084FC; color:#111; border-color:transparent}
     .b-라운지콜완료,.b-외출콜완료{background:#34D399; border-color:transparent}
     .b-귀가,.b-수납후미귀가{background:#9CA3AF; color:#111; border-color:transparent}
@@ -267,7 +267,7 @@ if (notifyBtn){
     const isClinic=(s)=>/^[1-4]\s?진료실$/.test((s||'').trim());
     const badgeClass=(s)=>({
       '상담대기중':'b-상담대기중','면회대기중':'b-면회대기중',
-      '원내':'b-원내','라운지☕':'b-라운지☕','외출':'b-외출',
+      '원내':'b-원내','라운지':'b-라운지','외출':'b-외출',
       '라운지콜완료':'b-라운지콜완료','외출콜완료':'b-외출콜완료',
       '귀가':'b-귀가','수납후미귀가':'b-수납후미귀가',
       '1 진료실':'b-1진료실','2 진료실':'b-2진료실','3 진료실':'b-3진료실','4 진료실':'b-4진료실',
