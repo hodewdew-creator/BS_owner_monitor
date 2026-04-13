@@ -221,7 +221,7 @@
       const row3=document.getElementById('row3');
       const mk=(t,fn,cls="btn")=>{const b=document.createElement('button');b.className=cls;b.textContent=t;b.onclick=fn;if(t==="상담대기중"||t==="면회대기중"){b.style.color="#dc2626";b.style.fontWeight="900"}return b}
 
-      const ROW1=["상담대기중","면회대기중","원내","라운지☕","외출"];
+      const ROW1=["상담대기중","면회대기중","원내","라운지","외출"];
       const ROW2=["라운지콜완료","외출콜완료","귀가","수납후미귀가"];
       const ROW3=["1진료실","2진료실","3진료실","4진료실","삭제"];
       ROW1.forEach(s=>row1.appendChild(mk(s,()=>applyGlobalState(s))));
@@ -239,7 +239,7 @@
       function prettyName(d,id){return (d.patientName||d.guardianName)?(d.patientName&&d.guardianName?`${d.patientName}(${d.guardianName})`:(d.patientName||d.guardianName)):id}
       function colorFor(s){
         if(s==="상담대기중"||s==="면회대기중")return"#dc2626";
-        if(s==="원내"||s==="라운지☕")return"#d97706";
+        if(s==="원내"||s==="라운지")return"#d97706";
         if(s==="외출")return"#0284c7";
         if(s==="라운지콜완료"||s==="외출콜완료")return"#16a34a";
         if(/^\s*[1-4]\s?진료실$/.test(s||""))return"#2b5fa3";
@@ -306,7 +306,7 @@
       let lastAlertedId=null;
       let pendingReq=null;
 
-      function resolveAckLocation(cur){ if(cur==="외출")return"외출콜완료"; if(cur==="라운지☕")return"라운지콜완료"; return"라운지콜완료"; }
+      function resolveAckLocation(cur){ if(cur==="외출")return"외출콜완료"; if(cur==="라운지")return"라운지콜완료"; return"라운지콜완료"; }
       function showBigOverlay(name){ bigWho.textContent=name; bigOverlay.classList.add('show'); bigOverlay.setAttribute('aria-hidden','false'); }
       function hideBigOverlay(){ bigOverlay.classList.remove('show'); bigOverlay.setAttribute('aria-hidden','true'); }
       bigClose.onclick=hideBigOverlay;
